@@ -81,6 +81,7 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.POST, pre + "/payments/confirm").permitAll()
                 .requestMatchers(HttpMethod.PATCH, pre + "/orders/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_COOK", "ROLE_DELIVERYMAN")
                 .requestMatchers(HttpMethod.GET, pre + "/invoices").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, pre + "/invoices/sales-kpis").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, pre + "/invoices/paid/**").hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, pre + "/invoices/paid").hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, pre + "/facturation").hasAnyAuthority("ROLE_ADMIN")
