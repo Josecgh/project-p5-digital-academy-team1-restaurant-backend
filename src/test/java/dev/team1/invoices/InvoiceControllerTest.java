@@ -2,11 +2,15 @@ package dev.team1.invoices;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -21,6 +25,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,8 +34,10 @@ import dev.team1.contracts.IInvoiceService;
 import dev.team1.enums.OrderChannel;
 import dev.team1.enums.OrderStatus;
 import dev.team1.enums.PaymentMethod;
+import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
+import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.security.JwtFilter;
 import dev.team1.security.SecurityConfiguration;
 import jakarta.servlet.FilterChain;
@@ -83,6 +90,33 @@ class InvoiceControllerTest {
         .andExpect(jsonPath("$.totalElements").value(1));
 
     verify(invoiceService).findAll(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void findById_shouldReturnNotFoundWhenInvoiceDoesNotExist() throws Exception {
+    when(invoiceService.findById(404L))
+        .thenThrow(new InvoiceExceptionNotFound("Invoice 404 not found."));
+
+    mockMvc.perform(get("/api/v1/invoices/{id}", 404L))
+        .andExpect(status().isNotFound())
+        .andExpect(content().string("Invoice 404 not found."));
+
+    verify(invoiceService).findById(404L);
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void create_shouldRejectInvalidInvoiceData() throws Exception {
+    mockMvc.perform(post("/api/v1/invoices")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"invoiceNumber":"33333333-3333-3333-3333-333333333333","amount":0,"paidAt":"2026-10-01T14:00:00Z"}
+                """))
+        .andExpect(status().isBadRequest());
+
+    verify(invoiceService, never()).create(any(InvoiceDTORequest.class));
   }
 
   @Test
