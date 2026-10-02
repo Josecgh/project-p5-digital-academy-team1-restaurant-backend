@@ -7,6 +7,7 @@ import dev.team1.contracts.IInvoiceService;
 import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
+import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
@@ -70,6 +71,11 @@ public class InvoiceController {
     Pageable pageable
   ) {
     return ResponseEntity.ok(invoiceService.findPaid(search, pageable));
+  }
+
+  @GetMapping("/invoices/sales-kpis")
+  public ResponseEntity<SalesKpiDTOResponse> salesKpis() {
+    return ResponseEntity.ok(invoiceService.salesKpis());
   }
   
 }
