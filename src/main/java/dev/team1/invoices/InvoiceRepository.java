@@ -2,6 +2,8 @@ package dev.team1.invoices;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,4 +48,7 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
       @Param("tableNumber") Integer tableNumber,
       @Param("customerSearch") String customerSearch,
       Pageable pageable);
+
+  List<InvoiceEntity> findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+      OrderStatus status, Instant from, Instant to);
 }
