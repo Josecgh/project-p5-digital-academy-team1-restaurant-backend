@@ -83,7 +83,7 @@ public class SecurityConfiguration {
                 .requestMatchers(HttpMethod.GET, pre + "/invoices").hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, pre + "/invoices/paid/**").hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, pre + "/invoices/paid").hasAnyAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.GET, pre + "/facturacion").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, pre + "/facturation").hasAnyAuthority("ROLE_ADMIN")
                 .requestMatchers(pre + "/auth/login").permitAll()
                 .requestMatchers(pre + "/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET, pre + "/products").permitAll()

@@ -118,4 +118,11 @@ class InvoiceControllerTest {
     mockMvc.perform(get("/api/v1/invoices"))
         .andExpect(status().isForbidden());
   }
+
+  @Test
+  @WithMockUser(authorities = "ROLE_CUSTOMER")
+  void facturation_shouldRejectNonAdmin() throws Exception {
+    mockMvc.perform(get("/api/v1/facturation"))
+        .andExpect(status().isForbidden());
+  }
 }
