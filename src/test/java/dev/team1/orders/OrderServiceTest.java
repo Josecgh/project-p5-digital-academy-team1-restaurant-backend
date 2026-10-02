@@ -29,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import dev.team1.contracts.IInvoiceService;
 import dev.team1.enums.OrderChannel;
 import dev.team1.enums.OrderStatus;
 import dev.team1.enums.PaymentMethod;
@@ -61,6 +62,9 @@ class OrderServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+        @Mock
+        private IInvoiceService invoiceService;
 
     @InjectMocks
     private OrderService service;
@@ -226,7 +230,23 @@ class OrderServiceTest {
         assertNull(response.paymentStatus());
         assertEquals(paymentMethod, order.getPaymentMethod());
         verify(orderRepository).save(order);
+                verify(invoiceService).createForPaidOrder(order);
     }
+
+        @Test
+        void markAsPaidEnsuresInvoiceForAlreadyPaidOrder() {
+                OrderEntity order = new OrderEntity();
+                order.setStatus(OrderStatus.PAID);
+                order.setChannel(OrderChannel.ONLINE);
+                order.setPaymentMethod(PaymentMethod.ONLINE_CARD);
+                when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+                OrderDTOResponse response = service.markAsPaid(1L);
+
+                assertEquals(OrderStatus.PAID, response.status());
+                verify(orderRepository, never()).save(any(OrderEntity.class));
+                verify(invoiceService).createForPaidOrder(order);
+        }
 
     @Test
     void markAsPaidRejectsDeliveredOrderWithoutSaving() {

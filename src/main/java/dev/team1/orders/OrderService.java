@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import dev.team1.contracts.IInvoiceService;
 import dev.team1.enums.OrderChannel;
 import dev.team1.enums.OrderStatus;
 import dev.team1.enums.PaymentMethod;
@@ -54,15 +55,18 @@ public class OrderService {
     private final ProductRepository productsRepository;
     private final TableRepository tableRepository;
     private final UserRepository userRepository;
+        private final IInvoiceService invoiceService;
 
     public OrderService(OrderRepository orderRepository,
             ProductRepository productsRepository,
             TableRepository tableRepository,
-            UserRepository userRepository) {
+                        UserRepository userRepository,
+                        IInvoiceService invoiceService) {
         this.orderRepository = orderRepository;
         this.productsRepository = productsRepository;
         this.tableRepository = tableRepository;
         this.userRepository = userRepository;
+                this.invoiceService = invoiceService;
     }
 
     @Transactional
@@ -225,6 +229,7 @@ public class OrderService {
                         "Order not found: " + orderId));
 
         if (order.getStatus() == OrderStatus.PAID) {
+                        invoiceService.createForPaidOrder(order);
             return toResponse(order);
         }
 
@@ -238,6 +243,7 @@ public class OrderService {
         order.setStatus(OrderStatus.PAID);
         order.setPaymentStatus(null);
         OrderEntity savedOrder = orderRepository.save(order);
+        invoiceService.createForPaidOrder(savedOrder);
         return toResponse(savedOrder);
     }
 

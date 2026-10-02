@@ -1,6 +1,8 @@
 package dev.team1.invoices;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -17,11 +19,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import dev.team1.enums.OrderChannel;
 import dev.team1.enums.OrderStatus;
@@ -43,6 +47,37 @@ public class InvoiceServiceTest {
 
 	@InjectMocks
 	private InvoiceService invoiceService;
+
+	@Test
+	void createForPaidOrder_shouldSaveInvoiceLinkedToOrder() {
+		OrderEntity order = new OrderEntity();
+		ReflectionTestUtils.setField(order, "id", 77L);
+		order.setTotal(new BigDecimal("35.50"));
+		when(invoiceRepository.existsByOrder_Id(77L)).thenReturn(false);
+		when(invoiceRepository.save(any(InvoiceEntity.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		invoiceService.createForPaidOrder(order);
+
+		ArgumentCaptor<InvoiceEntity> captor = ArgumentCaptor.forClass(InvoiceEntity.class);
+		verify(invoiceRepository).save(captor.capture());
+		assertSame(order, captor.getValue().getOrder());
+		assertEquals(new BigDecimal("35.50"), captor.getValue().getAmount());
+		assertNotNull(captor.getValue().getPaidAt());
+		verify(invoiceRepository).existsByOrder_Id(77L);
+	}
+
+	@Test
+	void createForPaidOrder_shouldNotDuplicateInvoice() {
+		OrderEntity order = new OrderEntity();
+		ReflectionTestUtils.setField(order, "id", 77L);
+		when(invoiceRepository.existsByOrder_Id(77L)).thenReturn(true);
+
+		invoiceService.createForPaidOrder(order);
+
+		verify(invoiceRepository).existsByOrder_Id(77L);
+		verify(invoiceRepository, never()).save(any(InvoiceEntity.class));
+	}
 
 	@Test
 	void create_shouldSaveAndReturnInvoice() {

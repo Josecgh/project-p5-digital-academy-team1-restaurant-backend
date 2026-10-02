@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 import dev.team1.contracts.IInvoiceService;
 import dev.team1.enums.OrderStatus;
 import dev.team1.invoices.dtos.InvoiceDTORequest;
@@ -13,6 +15,7 @@ import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.mappers.InvoiceMapper;
+import dev.team1.orders.OrderEntity;
 
 @Service
 public class InvoiceService implements IInvoiceService {
@@ -35,6 +38,21 @@ public class InvoiceService implements IInvoiceService {
 
     InvoiceEntity savedInvoice = invoiceRepository.save(invoice);
     return InvoiceMapper.toDTO(savedInvoice);
+  }
+
+  @Override
+  @Transactional
+  public void createForPaidOrder(OrderEntity order) {
+    if (invoiceRepository.existsByOrder_Id(order.getId())) {
+      return;
+    }
+
+    InvoiceEntity invoice = InvoiceEntity.builder()
+        .amount(order.getTotal())
+        .paidAt(Instant.now())
+        .build();
+    invoice.setOrder(order);
+    invoiceRepository.save(invoice);
   }
 
   @Override
