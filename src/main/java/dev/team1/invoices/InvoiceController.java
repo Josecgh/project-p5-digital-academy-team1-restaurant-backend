@@ -9,6 +9,7 @@ import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
+import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
@@ -82,6 +83,11 @@ public class InvoiceController {
   @GetMapping("/kpi/sales/channels")
   public ResponseEntity<SalesChannelDistributionDTOResponse> salesChannelDistribution() {
     return ResponseEntity.ok(invoiceService.salesChannelDistribution());
+  }
+
+  @GetMapping("/kpi/sales/weekly")
+  public ResponseEntity<WeeklySalesDTOResponse> weeklySales() {
+    return ResponseEntity.ok(invoiceService.weeklySales());
   }
   
 }
