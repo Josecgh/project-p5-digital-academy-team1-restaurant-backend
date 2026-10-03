@@ -25,6 +25,7 @@ import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
+import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.mappers.InvoiceMapper;
@@ -32,7 +33,7 @@ import dev.team1.orders.OrderEntity;
 
 @Service
 public class InvoiceService implements IInvoiceService {
-  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Madrid");
+  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asturias/Oviedo");
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
   private final InvoiceRepository invoiceRepository;
 
@@ -182,6 +183,23 @@ public class InvoiceService implements IInvoiceService {
 
     return new SalesKpiDTOResponse(todayMetric, monthMetric, quarterMetric, yearMetric,
         channelSales, weeklySales, busiestAmount.signum() == 0 ? null : busiestDay);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public SalesChannelDistributionDTOResponse salesChannelDistribution() {
+    LocalDate today = LocalDate.now(BUSINESS_ZONE);
+    LocalDate from = today.withDayOfMonth(1);
+    LocalDate to = today.plusDays(1);
+    List<InvoiceEntity> invoices = invoiceRepository
+        .findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+            OrderStatus.PAID,
+            from.atStartOfDay(BUSINESS_ZONE).toInstant(),
+            to.atStartOfDay(BUSINESS_ZONE).toInstant());
+    List<SalesKpiDTOResponse.ChannelSales> channels = channelSales(invoices, from, to);
+    BigDecimal total = channels.stream().map(SalesKpiDTOResponse.ChannelSales::amount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
+    return new SalesChannelDistributionDTOResponse(from, today, total, channels);
   }
 
   private SalesKpiDTOResponse.Metric metric(List<InvoiceEntity> invoices,
