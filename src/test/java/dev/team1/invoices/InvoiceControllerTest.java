@@ -107,12 +107,53 @@ class InvoiceControllerTest {
 
   @Test
   @WithMockUser(roles = "ADMIN")
+  void findPaidById_shouldReturnNotFoundWhenInvoiceDoesNotExist() throws Exception {
+    when(invoiceService.findPaidById(404L))
+        .thenThrow(new InvoiceExceptionNotFound("Paid invoice 404 not found."));
+
+    mockMvc.perform(get("/api/v1/invoices/paid/{id}", 404L))
+        .andExpect(status().isNotFound())
+        .andExpect(content().string("Paid invoice 404 not found."));
+
+    verify(invoiceService).findPaidById(404L);
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
   void create_shouldRejectInvalidInvoiceData() throws Exception {
     mockMvc.perform(post("/api/v1/invoices")
             .with(csrf())
             .contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"invoiceNumber":"33333333-3333-3333-3333-333333333333","amount":0,"paidAt":"2026-10-01T14:00:00Z"}
+                """))
+        .andExpect(status().isBadRequest());
+
+    verify(invoiceService, never()).create(any(InvoiceDTORequest.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void create_shouldRejectAmountWithMoreThanTwoDecimals() throws Exception {
+    mockMvc.perform(post("/api/v1/invoices")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"invoiceNumber":"33333333-3333-3333-3333-333333333333","amount":12.345,"paidAt":"2026-10-01T14:00:00Z"}
+                """))
+        .andExpect(status().isBadRequest());
+
+    verify(invoiceService, never()).create(any(InvoiceDTORequest.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void create_shouldRejectFuturePaidAt() throws Exception {
+    mockMvc.perform(post("/api/v1/invoices")
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {"invoiceNumber":"33333333-3333-3333-3333-333333333333","amount":12.34,"paidAt":"2099-10-01T14:00:00Z"}
                 """))
         .andExpect(status().isBadRequest());
 
@@ -158,5 +199,14 @@ class InvoiceControllerTest {
   void facturation_shouldRejectNonAdmin() throws Exception {
     mockMvc.perform(get("/api/v1/facturation"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "CUSTOMER")
+  void salesKpis_shouldRejectNonAdmin() throws Exception {
+    mockMvc.perform(get("/api/v1/kpi/sales"))
+        .andExpect(status().isForbidden());
+
+    verify(invoiceService, never()).salesKpis();
   }
 }
