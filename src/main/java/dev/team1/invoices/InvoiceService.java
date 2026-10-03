@@ -26,6 +26,7 @@ import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
+import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.mappers.InvoiceMapper;
@@ -166,23 +167,42 @@ public class InvoiceService implements IInvoiceService {
 
     List<SalesKpiDTOResponse.ChannelSales> channelSales = channelSales(
         invoices, monthStart, today.plusDays(1));
-    List<SalesKpiDTOResponse.DailySales> weeklySales = new ArrayList<>();
-    LocalDate busiestDay = null;
-    BigDecimal busiestAmount = BigDecimal.valueOf(-1);
+    WeeklySalesDTOResponse weekly = buildWeeklySales(invoices, weekStart);
+
+    return new SalesKpiDTOResponse(todayMetric, monthMetric, quarterMetric, yearMetric,
+        channelSales, weekly.days(), weekly.peakDay());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public WeeklySalesDTOResponse weeklySales() {
+    LocalDate today = LocalDate.now(BUSINESS_ZONE);
+    LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+    LocalDate weekEndExclusive = weekStart.plusDays(7);
+    List<InvoiceEntity> invoices = invoiceRepository
+        .findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+            OrderStatus.PAID,
+            weekStart.atStartOfDay(BUSINESS_ZONE).toInstant(),
+            weekEndExclusive.atStartOfDay(BUSINESS_ZONE).toInstant());
+    return buildWeeklySales(invoices, weekStart);
+  }
+
+  private WeeklySalesDTOResponse buildWeeklySales(List<InvoiceEntity> invoices, LocalDate weekStart) {
+    List<SalesKpiDTOResponse.DailySales> days = new ArrayList<>();
+    LocalDate peakDay = null;
+    BigDecimal peakAmount = BigDecimal.ZERO;
     for (int i = 0; i < 7; i++) {
       LocalDate date = weekStart.plusDays(i);
       BigDecimal onsite = sum(invoices, date, date.plusDays(1), OrderChannel.ONSITE);
       BigDecimal online = sum(invoices, date, date.plusDays(1), OrderChannel.ONLINE);
       BigDecimal total = onsite.add(online);
-      weeklySales.add(new SalesKpiDTOResponse.DailySales(date, onsite, online, total));
-      if (total.compareTo(busiestAmount) > 0) {
-        busiestAmount = total;
-        busiestDay = date;
+      days.add(new SalesKpiDTOResponse.DailySales(date, onsite, online, total));
+      if (total.compareTo(peakAmount) > 0) {
+        peakAmount = total;
+        peakDay = date;
       }
     }
-
-    return new SalesKpiDTOResponse(todayMetric, monthMetric, quarterMetric, yearMetric,
-        channelSales, weeklySales, busiestAmount.signum() == 0 ? null : busiestDay);
+    return new WeeklySalesDTOResponse(weekStart, weekStart.plusDays(6), peakDay, days);
   }
 
   @Override
