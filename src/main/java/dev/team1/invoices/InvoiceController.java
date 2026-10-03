@@ -73,7 +73,7 @@ public class InvoiceController {
     return ResponseEntity.ok(invoiceService.findPaid(search, pageable));
   }
 
-  @GetMapping("/invoices/sales-kpis")
+  @GetMapping("/kpi/sales")
   public ResponseEntity<SalesKpiDTOResponse> salesKpis() {
     return ResponseEntity.ok(invoiceService.salesKpis());
   }
