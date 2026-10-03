@@ -8,6 +8,7 @@ import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
+import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
 import dev.team1.orders.OrderEntity;
 
 public interface IInvoiceService {
@@ -20,4 +21,5 @@ public interface IInvoiceService {
   Page<PaidInvoiceDTOResponse> findPaid(String search, Pageable pageable);
   SalesKpiDTOResponse salesKpis();
   SalesChannelDistributionDTOResponse salesChannelDistribution();
+  WeeklySalesDTOResponse weeklySales();
 }
