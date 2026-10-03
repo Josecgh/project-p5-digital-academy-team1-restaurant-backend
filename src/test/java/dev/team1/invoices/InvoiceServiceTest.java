@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +36,7 @@ import dev.team1.enums.PaymentMethod;
 import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
+import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.orders.OrderEntity;
@@ -41,6 +45,7 @@ import dev.team1.users.UserEntity;
 
 @ExtendWith(MockitoExtension.class)
 public class InvoiceServiceTest {
+	private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Madrid");
 
 	@Mock
 	private InvoiceRepository invoiceRepository;
@@ -49,7 +54,7 @@ public class InvoiceServiceTest {
 	private InvoiceService invoiceService;
 
 	@Test
-	void createForPaidOrder_shouldSaveInvoiceLinkedToOrder() {
+	void createsInvoiceForPaidOrder() {
 		OrderEntity order = new OrderEntity();
 		ReflectionTestUtils.setField(order, "id", 77L);
 		order.setTotal(new BigDecimal("35.50"));
@@ -68,7 +73,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void createForPaidOrder_shouldNotDuplicateInvoice() {
+	void skipsDuplicateInvoice() {
 		OrderEntity order = new OrderEntity();
 		ReflectionTestUtils.setField(order, "id", 77L);
 		when(invoiceRepository.existsByOrder_Id(77L)).thenReturn(true);
@@ -80,7 +85,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void create_shouldSaveAndReturnInvoice() {
+	void createsInvoice() {
 		UUID invoiceNumber = UUID.fromString("11111111-1111-1111-1111-111111111111");
 		BigDecimal amount = new BigDecimal("37.50");
 		Instant paidAt = Instant.parse("2026-10-01T12:00:00Z");
@@ -100,7 +105,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void create_shouldThrowConflictWhenInvoiceNumberAlreadyExists() {
+	void rejectsDuplicateInvoiceNumber() {
 		UUID invoiceNumber = UUID.fromString("11111111-1111-1111-1111-111111111111");
 		InvoiceDTORequest request = new InvoiceDTORequest(
 				invoiceNumber,
@@ -117,7 +122,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findById_shouldReturnInvoiceWhenFound() {
+	void findsInvoice() {
 		UUID invoiceNumber = UUID.fromString("22222222-2222-2222-2222-222222222222");
 		InvoiceEntity invoice = invoice(
 				invoiceNumber,
@@ -134,7 +139,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findById_shouldThrowNotFoundWhenMissing() {
+	void missingInvoiceThrows() {
 		when(invoiceRepository.findById(404L)).thenReturn(Optional.empty());
 
 		InvoiceExceptionNotFound exception = assertThrows(
@@ -145,7 +150,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findAll_shouldMapInvoicesToResponsePage() {
+	void listsInvoices() {
 		Pageable pageable = PageRequest.of(0, 5);
 		InvoiceEntity invoice = invoice(
 				UUID.fromString("33333333-3333-3333-3333-333333333333"),
@@ -163,7 +168,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findAll_shouldThrowNotFoundWhenThereAreNoInvoices() {
+	void emptyInvoiceListThrows() {
 		Pageable pageable = PageRequest.of(0, 5);
 		when(invoiceRepository.findAll(pageable))
 				.thenReturn(new PageImpl<>(List.of(), pageable, 0));
@@ -176,7 +181,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaid_shouldReturnPaidInvoicesWithOrderDetails() {
+	void listsPaidInvoices() {
 		Pageable pageable = PageRequest.of(0, 5);
 		UserEntity user = new UserEntity();
 		user.setFirstName("Ana");
@@ -210,7 +215,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaid_shouldThrowNotFoundWhenThereAreNoPaidInvoices() {
+	void emptyPaidInvoiceListThrows() {
 		Pageable pageable = PageRequest.of(0, 5);
 		when(invoiceRepository.findByOrder_Status(OrderStatus.PAID, pageable))
 				.thenReturn(new PageImpl<>(List.of(), pageable, 0));
@@ -223,7 +228,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidWithSearch_shouldSearchByInvoiceIdOrTableNumber() {
+	void searchesPaidInvoicesByIdOrTable() {
 		Pageable pageable = PageRequest.of(0, 5);
 		InvoiceEntity invoice = invoice(
 				UUID.fromString("77777777-7777-7777-7777-777777777777"),
@@ -246,7 +251,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidWithSearch_shouldSearchByCustomerName() {
+	void searchesPaidInvoicesByCustomer() {
 		Pageable pageable = PageRequest.of(0, 5);
 		UserEntity user = new UserEntity();
 		user.setFirstName("Ana");
@@ -269,7 +274,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidWithBlankSearch_shouldSearchWithoutFilters() {
+	void blankSearchListsPaidInvoices() {
 		Pageable pageable = PageRequest.of(0, 5);
 		when(invoiceRepository.searchPaidInvoices(OrderStatus.PAID, null, null, null, pageable))
 				.thenReturn(new PageImpl<>(List.of(invoice(
@@ -284,7 +289,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidWithSearch_shouldThrowNotFoundWhenThereAreNoMatches() {
+	void noSearchMatchesThrows() {
 		Pageable pageable = PageRequest.of(0, 5);
 		when(invoiceRepository.searchPaidInvoices(OrderStatus.PAID, null, null, "Nobody", pageable))
 				.thenReturn(new PageImpl<>(List.of(), pageable, 0));
@@ -298,7 +303,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidById_shouldReturnPaidInvoiceWithOrderDetails() {
+	void findsPaidInvoice() {
 		UserEntity user = new UserEntity();
 		user.setFirstName("Ana");
 		user.setLastName("Perez");
@@ -325,7 +330,7 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
-	void findPaidById_shouldThrowNotFoundWhenInvoiceIsMissingOrNotPaid() {
+	void missingPaidInvoiceThrows() {
 		when(invoiceRepository.findByIdAndOrder_Status(404L, OrderStatus.PAID))
 				.thenReturn(Optional.empty());
 
@@ -334,6 +339,92 @@ public class InvoiceServiceTest {
 				() -> invoiceService.findPaidById(404L));
 
 		assertEquals("Paid invoice 404 not found.", exception.getMessage());
+	}
+
+	@Test
+	void aggregatesSalesPeriodsAndChannels() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		LocalDate monthStart = today.withDayOfMonth(1);
+		LocalDate quarterStart = LocalDate.of(today.getYear(), ((today.getMonthValue() - 1) / 3) * 3 + 1, 1);
+		List<InvoiceEntity> invoices = List.of(
+				paidSale(new BigDecimal("10.00"), today, OrderChannel.ONSITE),
+				paidSale(new BigDecimal("20.00"), today, OrderChannel.ONLINE),
+				paidSale(new BigDecimal("5.00"), today.minusDays(1), OrderChannel.ONSITE),
+				paidSale(new BigDecimal("7.00"), monthStart.minusMonths(1).plusDays(1), OrderChannel.ONLINE),
+				paidSale(new BigDecimal("11.00"), quarterStart.minusMonths(3).plusDays(1), OrderChannel.ONSITE),
+				paidSale(new BigDecimal("13.00"), today.withDayOfYear(1).minusYears(1).plusDays(1), OrderChannel.ONLINE));
+		when(invoiceRepository.findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
+
+		SalesKpiDTOResponse result = invoiceService.salesKpis();
+
+		assertEquals(new BigDecimal("30.00"), result.today().amount());
+		assertEquals(new BigDecimal("500.00"), result.today().variationPercent());
+		assertEquals(new BigDecimal("35.00"), result.month().amount());
+		assertEquals(new BigDecimal("400.00"), result.month().variationPercent());
+		assertEquals(new BigDecimal("35.00"), result.quarter().amount());
+		assertEquals(new BigDecimal("218.18"), result.quarter().variationPercent());
+		assertEquals(new BigDecimal("53.00"), result.fiscalYear().amount());
+		assertEquals(new BigDecimal("307.69"), result.fiscalYear().variationPercent());
+		assertEquals(new BigDecimal("15.00"), result.channelSales().get(0).amount());
+		assertEquals(new BigDecimal("42.86"), result.channelSales().get(0).percentage());
+		assertEquals(new BigDecimal("20.00"), result.channelSales().get(1).amount());
+		assertEquals(new BigDecimal("57.14"), result.channelSales().get(1).percentage());
+		assertEquals(today, result.busiestDay());
+	}
+
+	@Test
+	void aggregatesWeeklySales() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
+		List<InvoiceEntity> invoices = List.of(
+				paidSale(new BigDecimal("15.00"), today, OrderChannel.ONSITE),
+				paidSale(new BigDecimal("25.00"), today.minusDays(1), OrderChannel.ONLINE));
+		when(invoiceRepository.findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
+
+		var result = invoiceService.weeklySales();
+
+		assertEquals(weekStart, result.weekStart());
+		assertEquals(weekStart.plusDays(6), result.weekEnd());
+		assertEquals(7, result.days().size());
+		assertEquals(weekStart, result.days().get(0).date());
+		assertEquals(weekStart.plusDays(6), result.days().get(6).date());
+		assertEquals(today.minusDays(1), result.peakDay());
+		var peak = result.days().get((int) java.time.temporal.ChronoUnit.DAYS.between(weekStart, result.peakDay()));
+		assertEquals(new BigDecimal("25.00"), peak.online());
+		assertEquals(new BigDecimal("25.00"), peak.total());
+	}
+
+	@Test
+	void aggregatesMonthlySalesByChannel() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		List<InvoiceEntity> invoices = List.of(
+				paidSale(new BigDecimal("25.00"), today, OrderChannel.ONSITE),
+				paidSale(new BigDecimal("75.00"), today, OrderChannel.ONLINE),
+				paidSale(new BigDecimal("200.00"), today.minusMonths(1), OrderChannel.ONLINE));
+		when(invoiceRepository.findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
+
+		var result = invoiceService.salesChannelDistribution();
+
+		assertEquals(today.withDayOfMonth(1), result.from());
+		assertEquals(today, result.to());
+		assertEquals(new BigDecimal("100.00"), result.total());
+		assertEquals(new BigDecimal("25.00"), result.channels().get(0).amount());
+		assertEquals(new BigDecimal("25.00"), result.channels().get(0).percentage());
+		assertEquals(new BigDecimal("75.00"), result.channels().get(1).amount());
+		assertEquals(new BigDecimal("75.00"), result.channels().get(1).percentage());
+	}
+
+	private InvoiceEntity paidSale(BigDecimal amount, LocalDate date, OrderChannel channel) {
+		InvoiceEntity invoice = invoice(UUID.randomUUID(), amount,
+				date.atTime(12, 0).atZone(BUSINESS_ZONE).toInstant());
+		OrderEntity order = new OrderEntity();
+		order.setStatus(OrderStatus.PAID);
+		order.setChannel(channel);
+		invoice.setOrder(order);
+		return invoice;
 	}
 
 	private InvoiceEntity invoice(UUID invoiceNumber, BigDecimal amount, Instant paidAt) {
