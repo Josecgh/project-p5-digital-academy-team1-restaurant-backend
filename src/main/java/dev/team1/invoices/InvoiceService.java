@@ -150,7 +150,7 @@ public class InvoiceService implements IInvoiceService {
     LocalDate weekStart = today.with(DayOfWeek.MONDAY);
     Instant end = today.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
     List<InvoiceEntity> invoices = invoiceRepository
-        .findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+        .findPaidByStatusAndPaidAtRange(
             OrderStatus.PAID, previousYearStart.atStartOfDay(BUSINESS_ZONE).toInstant(), end);
 
     LocalDate monthStart = today.withDayOfMonth(1);
@@ -180,7 +180,7 @@ public class InvoiceService implements IInvoiceService {
     LocalDate weekStart = today.with(DayOfWeek.MONDAY);
     LocalDate weekEndExclusive = weekStart.plusDays(7);
     List<InvoiceEntity> invoices = invoiceRepository
-        .findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+        .findPaidByStatusAndPaidAtRange(
             OrderStatus.PAID,
             weekStart.atStartOfDay(BUSINESS_ZONE).toInstant(),
             weekEndExclusive.atStartOfDay(BUSINESS_ZONE).toInstant());
@@ -212,7 +212,7 @@ public class InvoiceService implements IInvoiceService {
     LocalDate from = today.withDayOfMonth(1);
     LocalDate to = today.plusDays(1);
     List<InvoiceEntity> invoices = invoiceRepository
-        .findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
+        .findPaidByStatusAndPaidAtRange(
             OrderStatus.PAID,
             from.atStartOfDay(BUSINESS_ZONE).toInstant(),
             to.atStartOfDay(BUSINESS_ZONE).toInstant());

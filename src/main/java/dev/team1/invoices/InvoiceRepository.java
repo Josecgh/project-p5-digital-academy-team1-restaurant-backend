@@ -49,6 +49,15 @@ public interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
       @Param("customerSearch") String customerSearch,
       Pageable pageable);
 
-  List<InvoiceEntity> findByOrder_StatusAndPaidAtGreaterThanEqualAndPaidAtLessThan(
-      OrderStatus status, Instant from, Instant to);
+  @Query("""
+      SELECT i FROM InvoiceEntity i
+      JOIN i.order o
+      WHERE o.status = :status
+      AND i.paidAt >= :from
+      AND i.paidAt < :to
+      """)
+  List<InvoiceEntity> findPaidByStatusAndPaidAtRange(
+      @Param("status") OrderStatus status,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
 }
