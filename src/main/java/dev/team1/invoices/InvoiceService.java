@@ -33,7 +33,7 @@ import dev.team1.orders.OrderEntity;
 
 @Service
 public class InvoiceService implements IInvoiceService {
-  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asturias/Oviedo");
+  private static final ZoneId BUSINESS_ZONE = ZoneId.of("Europe/Madrid");
   private static final BigDecimal ZERO = BigDecimal.ZERO.setScale(2);
   private final InvoiceRepository invoiceRepository;
 
