@@ -168,7 +168,7 @@ class InvoiceControllerTest {
         UUID.fromString("22222222-2222-2222-2222-222222222222"),
         "Ana Perez",
         4,
-        OrderChannel.ONSITE,
+        OrderChannel.SALA,
         new BigDecimal("18.00"),
         OrderStatus.PAID,
         PaymentMethod.CARD_ONSITE,

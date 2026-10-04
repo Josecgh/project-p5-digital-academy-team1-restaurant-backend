@@ -193,8 +193,8 @@ public class InvoiceService implements IInvoiceService {
     BigDecimal peakAmount = BigDecimal.ZERO;
     for (int i = 0; i < 7; i++) {
       LocalDate date = weekStart.plusDays(i);
-      BigDecimal onsite = sum(invoices, date, date.plusDays(1), OrderChannel.ONSITE);
-      BigDecimal online = sum(invoices, date, date.plusDays(1), OrderChannel.ONLINE);
+      BigDecimal onsite = sum(invoices, date, date.plusDays(1), OrderChannel.SALA);
+      BigDecimal online = sum(invoices, date, date.plusDays(1), OrderChannel.DOMICILIO);
       BigDecimal total = onsite.add(online);
       days.add(new SalesKpiDTOResponse.DailySales(date, onsite, online, total));
       if (total.compareTo(peakAmount) > 0) {
@@ -241,7 +241,7 @@ public class InvoiceService implements IInvoiceService {
             Collectors.mapping(InvoiceEntity::getAmount,
                 Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))));
     BigDecimal total = amounts.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-    return List.of(OrderChannel.ONSITE, OrderChannel.ONLINE).stream()
+    return List.of(OrderChannel.SALA, OrderChannel.DOMICILIO).stream()
         .map(channel -> {
           BigDecimal amount = amounts.getOrDefault(channel, ZERO).setScale(2, RoundingMode.HALF_UP);
           BigDecimal percentage = total.signum() == 0 ? BigDecimal.ZERO

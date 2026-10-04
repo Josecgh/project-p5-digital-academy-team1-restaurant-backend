@@ -190,7 +190,7 @@ public class InvoiceServiceTest {
 		table.setTableNumber(4);
 		OrderEntity order = new OrderEntity();
 		order.setStatus(OrderStatus.PAID);
-		order.setChannel(OrderChannel.ONSITE);
+		order.setChannel(OrderChannel.SALA);
 		order.setPaymentMethod(PaymentMethod.CARD_ONSITE);
 		order.setUser(user);
 		order.setTable(table);
@@ -208,7 +208,7 @@ public class InvoiceServiceTest {
 		assertEquals(1, response.getTotalElements());
 		assertEquals("Ana Perez", paidInvoice.customerName());
 		assertEquals(4, paidInvoice.tableNumber());
-		assertEquals(OrderChannel.ONSITE, paidInvoice.channel());
+		assertEquals(OrderChannel.SALA, paidInvoice.channel());
 		assertEquals(OrderStatus.PAID, paidInvoice.status());
 		assertEquals(PaymentMethod.CARD_ONSITE, paidInvoice.paymentMethod());
 		verify(invoiceRepository).findByOrder_Status(OrderStatus.PAID, pageable);
@@ -309,7 +309,7 @@ public class InvoiceServiceTest {
 		user.setLastName("Perez");
 		OrderEntity order = new OrderEntity();
 		order.setStatus(OrderStatus.PAID);
-		order.setChannel(OrderChannel.ONSITE);
+		order.setChannel(OrderChannel.SALA);
 		order.setPaymentMethod(PaymentMethod.CARD_ONSITE);
 		order.setUser(user);
 		InvoiceEntity invoice = invoice(
@@ -323,7 +323,7 @@ public class InvoiceServiceTest {
 		PaidInvoiceDTOResponse response = invoiceService.findPaidById(9L);
 
 		assertEquals("Ana Perez", response.customerName());
-		assertEquals(OrderChannel.ONSITE, response.channel());
+		assertEquals(OrderChannel.SALA, response.channel());
 		assertEquals(OrderStatus.PAID, response.status());
 		assertEquals(PaymentMethod.CARD_ONSITE, response.paymentMethod());
 		verify(invoiceRepository).findByIdAndOrder_Status(9L, OrderStatus.PAID);
@@ -347,12 +347,12 @@ public class InvoiceServiceTest {
 		LocalDate monthStart = today.withDayOfMonth(1);
 		LocalDate quarterStart = LocalDate.of(today.getYear(), ((today.getMonthValue() - 1) / 3) * 3 + 1, 1);
 		List<InvoiceEntity> invoices = List.of(
-				paidSale(new BigDecimal("10.00"), today, OrderChannel.ONSITE),
-				paidSale(new BigDecimal("20.00"), today, OrderChannel.ONLINE),
-				paidSale(new BigDecimal("5.00"), today.minusDays(1), OrderChannel.ONSITE),
-				paidSale(new BigDecimal("7.00"), monthStart.minusMonths(1).plusDays(1), OrderChannel.ONLINE),
-				paidSale(new BigDecimal("11.00"), quarterStart.minusMonths(3).plusDays(1), OrderChannel.ONSITE),
-				paidSale(new BigDecimal("13.00"), today.withDayOfYear(1).minusYears(1).plusDays(1), OrderChannel.ONLINE));
+				paidSale(new BigDecimal("10.00"), today, OrderChannel.SALA),
+				paidSale(new BigDecimal("20.00"), today, OrderChannel.DOMICILIO),
+				paidSale(new BigDecimal("5.00"), today.minusDays(1), OrderChannel.SALA),
+				paidSale(new BigDecimal("7.00"), monthStart.minusMonths(1).plusDays(1), OrderChannel.DOMICILIO),
+				paidSale(new BigDecimal("11.00"), quarterStart.minusMonths(3).plusDays(1), OrderChannel.SALA),
+				paidSale(new BigDecimal("13.00"), today.withDayOfYear(1).minusYears(1).plusDays(1), OrderChannel.DOMICILIO));
 		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
 				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
 
@@ -367,10 +367,10 @@ public class InvoiceServiceTest {
 		assertEquals(new BigDecimal("53.00"), result.fiscalYear().amount());
 		assertEquals(new BigDecimal("307.69"), result.fiscalYear().variationPercent());
 		assertEquals(new BigDecimal("15.00"), result.channelSales().get(0).amount());
-		assertEquals(OrderChannel.ONSITE, result.channelSales().get(0).channel());
+		assertEquals(OrderChannel.SALA, result.channelSales().get(0).channel());
 		assertEquals(new BigDecimal("42.86"), result.channelSales().get(0).percentage());
 		assertEquals(new BigDecimal("20.00"), result.channelSales().get(1).amount());
-		assertEquals(OrderChannel.ONLINE, result.channelSales().get(1).channel());
+		assertEquals(OrderChannel.DOMICILIO, result.channelSales().get(1).channel());
 		assertEquals(new BigDecimal("57.14"), result.channelSales().get(1).percentage());
 		assertEquals(today, result.busiestDay());
 		var todaySales = result.weeklySales().stream()
@@ -387,8 +387,8 @@ public class InvoiceServiceTest {
 		LocalDate today = LocalDate.now(BUSINESS_ZONE);
 		LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
 		List<InvoiceEntity> invoices = List.of(
-				paidSale(new BigDecimal("15.00"), today, OrderChannel.ONSITE),
-				paidSale(new BigDecimal("25.00"), today.minusDays(1), OrderChannel.ONLINE));
+				paidSale(new BigDecimal("15.00"), today, OrderChannel.SALA),
+				paidSale(new BigDecimal("25.00"), today.minusDays(1), OrderChannel.DOMICILIO));
 		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
 				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
 
@@ -414,9 +414,9 @@ public class InvoiceServiceTest {
 	void channelSales() {
 		LocalDate today = LocalDate.now(BUSINESS_ZONE);
 		List<InvoiceEntity> invoices = List.of(
-				paidSale(new BigDecimal("25.00"), today, OrderChannel.ONSITE),
-				paidSale(new BigDecimal("75.00"), today, OrderChannel.ONLINE),
-				paidSale(new BigDecimal("200.00"), today.minusMonths(1), OrderChannel.ONLINE));
+				paidSale(new BigDecimal("25.00"), today, OrderChannel.SALA),
+				paidSale(new BigDecimal("75.00"), today, OrderChannel.DOMICILIO),
+				paidSale(new BigDecimal("200.00"), today.minusMonths(1), OrderChannel.DOMICILIO));
 		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
 				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
 
@@ -425,10 +425,10 @@ public class InvoiceServiceTest {
 		assertEquals(today.withDayOfMonth(1), result.from());
 		assertEquals(today, result.to());
 		assertEquals(new BigDecimal("100.00"), result.total());
-		assertEquals(OrderChannel.ONSITE, result.channels().get(0).channel());
+		assertEquals(OrderChannel.SALA, result.channels().get(0).channel());
 		assertEquals(new BigDecimal("25.00"), result.channels().get(0).amount());
 		assertEquals(new BigDecimal("25.00"), result.channels().get(0).percentage());
-		assertEquals(OrderChannel.ONLINE, result.channels().get(1).channel());
+		assertEquals(OrderChannel.DOMICILIO, result.channels().get(1).channel());
 		assertEquals(new BigDecimal("75.00"), result.channels().get(1).amount());
 		assertEquals(new BigDecimal("75.00"), result.channels().get(1).percentage());
 	}
@@ -440,10 +440,10 @@ public class InvoiceServiceTest {
 		Instant start = monthStart.atStartOfDay(BUSINESS_ZONE).toInstant();
 		Instant end = today.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant();
 		List<InvoiceEntity> invoices = List.of(
-				paidSale(new BigDecimal("10.00"), start, OrderChannel.ONSITE),
-				paidSale(new BigDecimal("20.00"), end.minusNanos(1), OrderChannel.ONLINE),
-				paidSale(new BigDecimal("999.00"), start.minusNanos(1), OrderChannel.ONSITE),
-				paidSale(new BigDecimal("888.00"), end, OrderChannel.ONLINE));
+				paidSale(new BigDecimal("10.00"), start, OrderChannel.SALA),
+				paidSale(new BigDecimal("20.00"), end.minusNanos(1), OrderChannel.DOMICILIO),
+				paidSale(new BigDecimal("999.00"), start.minusNanos(1), OrderChannel.SALA),
+				paidSale(new BigDecimal("888.00"), end, OrderChannel.DOMICILIO));
 		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
 				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(invoices);
 

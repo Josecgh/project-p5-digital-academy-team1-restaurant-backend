@@ -76,7 +76,7 @@ class OrderControllerTest {
                 UUID userId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 2)),
-                                "No onions", OrderChannel.ONSITE, PaymentMethod.CARD_ONSITE);
+                                "No onions", OrderChannel.SALA, PaymentMethod.CARD_ONSITE);
                 when(service.createOrder(request, "tablet-12", userId)).thenReturn(response(OrderStatus.PLACED));
 
         mockMvc.perform(post("/api/v1/orders")
@@ -85,12 +85,12 @@ class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Device-Identifier", "tablet-12")
                         .content("""
-                                {"items":[{"productId":2,"quantity":2}],"chefNote":"No onions","channel":"ONSITE","paymentMethod":"CARD_ONSITE"}
+                                {"items":[{"productId":2,"quantity":2}],"chefNote":"No onions","channel":"SALA","paymentMethod":"CARD_ONSITE"}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.status").value("PLACED"))
-                                .andExpect(jsonPath("$.channel").value("ONSITE"))
+                                .andExpect(jsonPath("$.channel").value("SALA"))
                                 .andExpect(jsonPath("$.paymentMethod").value("CARD_ONSITE"))
                                 .andExpect(jsonPath("$.paymentStatus").value("PENDING_CARD_TERMINAL"))
                                 .andExpect(jsonPath("$.tableNumber").value(12))
@@ -104,7 +104,7 @@ class OrderControllerTest {
                 UUID userId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
                 when(service.createOrder(request, "tablet-7", userId)).thenReturn(response(OrderStatus.PLACED));
 
         mockMvc.perform(post("/api/v1/orders")
@@ -124,7 +124,7 @@ class OrderControllerTest {
         void createOnlineOrderPassesGuestRequestToService() throws Exception {
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
                 when(service.createOrder(request, null, null)).thenReturn(response(OrderStatus.PLACED));
 
         mockMvc.perform(post("/api/v1/orders")
@@ -145,7 +145,7 @@ class OrderControllerTest {
                 customer.setEmail("customer@example.com");
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
                 when(service.createOrder(request, null, userId)).thenReturn(response(OrderStatus.PLACED));
 
                 mockMvc.perform(post("/api/v1/orders")
@@ -164,7 +164,7 @@ class OrderControllerTest {
         void createOnsiteOrderPassesGuestRequestToService() throws Exception {
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
                 when(service.createOrder(request, "tablet-12", null)).thenReturn(response(OrderStatus.PLACED));
 
                 mockMvc.perform(post("/api/v1/orders")
@@ -184,7 +184,7 @@ class OrderControllerTest {
                 UUID userId = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
                 when(service.createOrder(request, null, userId)).thenThrow(new ResponseStatusException(
                                 org.springframework.http.HttpStatus.BAD_REQUEST, "Device identifier is required"));
 
@@ -206,7 +206,7 @@ class OrderControllerTest {
                 UUID userId = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
                 OrderDTORequest request = new OrderDTORequest(
                                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
                 when(service.createOrder(request, "unknown-device", userId)).thenThrow(new ResponseStatusException(
                                 org.springframework.http.HttpStatus.NOT_FOUND, "No table found for the given device."));
 
@@ -324,7 +324,7 @@ class OrderControllerTest {
                                 new BigDecimal("2.00"),
                                 "No onions",
                                 orderStatus,
-                                OrderChannel.ONSITE,
+                                OrderChannel.SALA,
                                 PaymentMethod.CARD_ONSITE,
                                 12,
                                 paymentStatus);

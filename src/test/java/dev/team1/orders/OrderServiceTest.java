@@ -88,7 +88,7 @@ class OrderServiceTest {
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 2)),
-                "No onions", OrderChannel.ONSITE, PaymentMethod.CARD_ONSITE);
+                "No onions", OrderChannel.SALA, PaymentMethod.CARD_ONSITE);
 
         OrderDTOResponse response = service.createOrder(request, "tablet-12", REGISTERED_USER_ID);
 
@@ -102,7 +102,7 @@ class OrderServiceTest {
         verify(orderRepository).save(captor.capture());
         OrderEntity savedOrder = captor.getValue();
         assertEquals("No onions", savedOrder.getChefNote());
-        assertEquals(OrderChannel.ONSITE, savedOrder.getChannel());
+        assertEquals(OrderChannel.SALA, savedOrder.getChannel());
         assertEquals(PaymentMethod.CARD_ONSITE, savedOrder.getPaymentMethod());
         assertEquals(1, savedOrder.getOrderProducts().size());
         assertSame(product, savedOrder.getOrderProducts().get(0).getProduct());
@@ -117,7 +117,7 @@ class OrderServiceTest {
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 2)),
-                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
 
         OrderDTOResponse response = service.createOrder(request, "tablet-12", REGISTERED_USER_ID);
 
@@ -126,7 +126,7 @@ class OrderServiceTest {
         assertEquals(new BigDecimal("1.80"), response.vatAmount());
         assertEquals(new BigDecimal("19.80"), response.total());
         assertEquals(OrderStatus.PLACED, response.status());
-        assertEquals(OrderChannel.ONSITE, response.channel());
+        assertEquals(OrderChannel.SALA, response.channel());
         assertEquals(PaymentMethod.CASH_ONSITE, response.paymentMethod());
     }
 
@@ -171,11 +171,11 @@ class OrderServiceTest {
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONLINE, PaymentMethod.CASH_ON_DELIVERY);
+                null, OrderChannel.DOMICILIO, PaymentMethod.CASH_ON_DELIVERY);
 
         OrderDTOResponse response = service.createOrder(request, null, REGISTERED_USER_ID);
 
-        assertEquals(OrderChannel.ONLINE, response.channel());
+        assertEquals(OrderChannel.DOMICILIO, response.channel());
         assertEquals(null, response.tableNumber());
         ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
         verify(orderRepository).save(captor.capture());
@@ -194,7 +194,7 @@ class OrderServiceTest {
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
 
         service.createOrder(request, null, userId);
 
@@ -210,7 +210,7 @@ class OrderServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.createOrder(request, null, userId));
@@ -223,7 +223,7 @@ class OrderServiceTest {
     void deliveryOrderRequiresAccount() {
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.createOrder(request, "tablet-12", null));
@@ -238,7 +238,7 @@ class OrderServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(new UserEntity()));
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONLINE, PaymentMethod.ONLINE_CARD);
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.createOrder(request, null, userId));
@@ -255,7 +255,7 @@ class OrderServiceTest {
 
         OrderDTOResponse response = service.createOrder(onsiteRequest(), "tablet-12", null);
 
-        assertEquals(OrderChannel.ONSITE, response.channel());
+        assertEquals(OrderChannel.SALA, response.channel());
         ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
         verify(orderRepository).save(captor.capture());
         assertNull(captor.getValue().getUser());
@@ -272,7 +272,7 @@ class OrderServiceTest {
             PaymentMethod paymentMethod, PaymentStatus initialPaymentStatus) {
         OrderEntity order = new OrderEntity();
         order.setStatus(OrderStatus.PLACED);
-        order.setChannel(OrderChannel.ONSITE);
+        order.setChannel(OrderChannel.SALA);
         order.setPaymentMethod(paymentMethod);
         order.setPaymentStatus(initialPaymentStatus);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
@@ -293,7 +293,7 @@ class OrderServiceTest {
         void markAsPaidEnsuresInvoiceForAlreadyPaidOrder() {
                 OrderEntity order = new OrderEntity();
                 order.setStatus(OrderStatus.PAID);
-                order.setChannel(OrderChannel.ONLINE);
+                order.setChannel(OrderChannel.DOMICILIO);
                 order.setPaymentMethod(PaymentMethod.ONLINE_CARD);
                 when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
@@ -333,7 +333,7 @@ class OrderServiceTest {
 
         OrderDTORequest request = new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONSITE, paymentMethod);
+                null, OrderChannel.SALA, paymentMethod);
 
         OrderDTOResponse response = service.createOrder(request, "tablet-12", REGISTERED_USER_ID);
 
@@ -357,7 +357,7 @@ class OrderServiceTest {
             PaymentMethod paymentMethod, PaymentStatus expectedPaymentStatus) {
         OrderEntity order = new OrderEntity();
         order.setStatus(OrderStatus.PLACED);
-        order.setChannel(OrderChannel.ONSITE);
+        order.setChannel(OrderChannel.SALA);
         order.setPaymentMethod(paymentMethod);
         order.setPaymentStatus(expectedPaymentStatus);
         order.setCreatedAt(LocalDateTime.now());
@@ -385,7 +385,7 @@ class OrderServiceTest {
         when(productRepository.findById(2L)).thenReturn(Optional.of(product));
         return new OrderDTORequest(
                 List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
-                null, OrderChannel.ONSITE, PaymentMethod.CASH_ONSITE);
+                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
     }
 
     private TableEntity table(int tableNumber) {
@@ -635,10 +635,10 @@ class OrderServiceTest {
 
     @ParameterizedTest
     @CsvSource({
-            "ONSITE, ONLINE_CARD",
-            "ONSITE, CASH_ON_DELIVERY",
-            "ONLINE, CASH_ONSITE",
-            "ONLINE, CARD_ONSITE"
+            "SALA, ONLINE_CARD",
+            "SALA, CASH_ON_DELIVERY",
+            "DOMICILIO, CASH_ONSITE",
+            "DOMICILIO, CARD_ONSITE"
     })
     void createOrderRejectsInvalidChannelPaymentMethodCombination(
             OrderChannel channel, PaymentMethod paymentMethod) {
@@ -872,7 +872,7 @@ void createOrderPreparesChefNote(String input, String expected) {
     OrderDTORequest request = new OrderDTORequest(
             List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
             input,
-            OrderChannel.ONLINE,
+            OrderChannel.DOMICILIO,
             PaymentMethod.ONLINE_CARD);
 
     OrderDTOResponse response = service.createOrder(request, null, REGISTERED_USER_ID);
@@ -890,7 +890,7 @@ void createOrderRejectsChefNoteLongerThan500Characters() {
     OrderDTORequest request = new OrderDTORequest(
             List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
             "a".repeat(501),
-            OrderChannel.ONLINE,
+            OrderChannel.DOMICILIO,
             PaymentMethod.ONLINE_CARD);
 
     ResponseStatusException exception = assertThrows(

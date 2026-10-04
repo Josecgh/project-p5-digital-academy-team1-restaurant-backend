@@ -60,7 +60,7 @@ public class PaymentService {
                         HttpStatus.NOT_FOUND, "Order not found: " + request.orderId()));
 
         // b) Solo se paga con Stripe un pedido a domicilio con "Tarjeta online" que aún no esté pagado.
-        if (order.getChannel() != OrderChannel.ONLINE
+        if (order.getChannel() != OrderChannel.DOMICILIO
                 || order.getPaymentMethod() != PaymentMethod.ONLINE_CARD) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Order must use online card payment for delivery");
@@ -139,7 +139,7 @@ public class PaymentService {
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Order not found: " + orderId));
 
-            if (order.getChannel() != OrderChannel.ONLINE
+            if (order.getChannel() != OrderChannel.DOMICILIO
                     || order.getPaymentMethod() != PaymentMethod.ONLINE_CARD) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,

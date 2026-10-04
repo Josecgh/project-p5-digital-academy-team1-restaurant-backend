@@ -44,8 +44,8 @@ public class OrderService {
     private static final int KITCHEN_TARGET_MINUTES = 15;
 
     private static final Map<OrderChannel, List<PaymentMethod>> ALLOWED_PAYMENT_METHODS = Map.of(
-            OrderChannel.ONSITE, List.of(PaymentMethod.CASH_ONSITE, PaymentMethod.CARD_ONSITE),
-            OrderChannel.ONLINE, List.of(PaymentMethod.ONLINE_CARD, PaymentMethod.CASH_ON_DELIVERY));
+            OrderChannel.SALA, List.of(PaymentMethod.CASH_ONSITE, PaymentMethod.CARD_ONSITE),
+            OrderChannel.DOMICILIO, List.of(PaymentMethod.ONLINE_CARD, PaymentMethod.CASH_ON_DELIVERY));
 
     private static final Map<PaymentMethod, PaymentStatus> PAYMENT_STATUS = Map.of(
             PaymentMethod.CASH_ONSITE, PaymentStatus.PENDING_CASH,
@@ -84,14 +84,14 @@ public class OrderService {
                             HttpStatus.UNAUTHORIZED,
                             "Authenticated user no longer exists"));
         }
-        if (request.channel() == OrderChannel.ONLINE && user == null) {
+        if (request.channel() == OrderChannel.DOMICILIO && user == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "An account is required for home delivery");
         }
 
         OrderEntity order = new OrderEntity();
         order.setUser(user);
-        if (request.channel() == OrderChannel.ONLINE) {
+        if (request.channel() == OrderChannel.DOMICILIO) {
             String deliveryAddress = user.getAddress();
             if (deliveryAddress == null || deliveryAddress.isBlank()) {
                 throw new ResponseStatusException(
@@ -190,7 +190,7 @@ public class OrderService {
     }
 
     private TableEntity resolveTable(OrderChannel channel, String deviceIdentifier) {
-        if (channel != dev.team1.enums.OrderChannel.ONSITE) {
+        if (channel != dev.team1.enums.OrderChannel.SALA) {
             return null;
         }
 
