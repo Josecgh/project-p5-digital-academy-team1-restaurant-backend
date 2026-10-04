@@ -8,12 +8,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +39,7 @@ import dev.team1.enums.PaymentMethod;
 import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
+import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.security.JwtFilter;
 import dev.team1.security.SecurityConfiguration;
@@ -208,5 +211,28 @@ class InvoiceControllerTest {
         .andExpect(status().isForbidden());
 
     verify(invoiceService, never()).salesKpis();
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void salesReport_shouldGeneratePdfForDayWeekAndMonth() throws Exception {
+    for (String period : List.of("dia", "semana", "mes")) {
+      when(invoiceService.salesSummary(period)).thenReturn(new SalesSummaryDTOResponse(
+          period,
+          LocalDate.of(2026, 10, 1),
+          LocalDate.of(2026, 10, 4),
+          3,
+          new BigDecimal("90.00"),
+          new BigDecimal("60.00"),
+          new BigDecimal("30.00")));
+
+      mockMvc.perform(get("/api/v1/reportes/ventas.pdf").param("periodo", period))
+          .andExpect(status().isOk())
+          .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+          .andExpect(header().string("Content-Disposition",
+              "attachment; filename=\"resumen-ventas-2026-10-04.pdf\""));
+
+      verify(invoiceService).salesSummary(period);
+    }
   }
 }
