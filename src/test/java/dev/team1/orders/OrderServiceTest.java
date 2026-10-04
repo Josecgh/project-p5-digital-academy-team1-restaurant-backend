@@ -165,6 +165,38 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrderReturnsNotFoundWhenProductDoesNotExist() {
+        when(productRepository.findById(2L)).thenReturn(Optional.empty());
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, "tablet-12", null));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verify(orderRepository, never()).save(any(OrderEntity.class));
+        verify(tableRepository, never()).findByDeviceIdentifier("tablet-12");
+    }
+
+    @Test
+    void createOrderRejectsUnavailableProductWithoutSaving() {
+        ProductEntity unavailableProduct = product(null);
+        unavailableProduct.setAvailable(false);
+        when(productRepository.findById(2L)).thenReturn(Optional.of(unavailableProduct));
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.SALA, PaymentMethod.CASH_ONSITE);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, "tablet-12", null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(orderRepository, never()).save(any(OrderEntity.class));
+        verify(tableRepository, never()).findByDeviceIdentifier("tablet-12");
+    }
+
+    @Test
     void createOnlineOrderDoesNotAssociateTable() {
         ProductEntity product = product(null);
         when(productRepository.findById(2L)).thenReturn(Optional.of(product));

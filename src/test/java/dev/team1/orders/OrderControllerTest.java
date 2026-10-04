@@ -277,6 +277,16 @@ class OrderControllerTest {
 
         @Test
         @WithMockUser(roles = "CUSTOMER")
+        void markAsPaidRejectsCustomerWithoutPermission() throws Exception {
+                mockMvc.perform(patch("/api/v1/orders/1/paid")
+                                .with(csrf()))
+                        .andExpect(status().isForbidden());
+
+                verifyNoInteractions(service);
+        }
+
+        @Test
+        @WithMockUser(roles = "CUSTOMER")
         void getByIdReturnsOrderStatus() throws Exception {
                 when(service.getById(1L)).thenReturn(response(OrderStatus.PAID));
 
@@ -349,4 +359,17 @@ class OrderControllerTest {
 
     verifyNoInteractions(service);
 }
+
+        @Test
+        void createOrderRejectsNonPositiveQuantity() throws Exception {
+                mockMvc.perform(post("/api/v1/orders")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                                {"items":[{"productId":2,"quantity":0}],"channel":"SALA","paymentMethod":"CASH_ONSITE"}
+                                                """))
+                        .andExpect(status().isBadRequest());
+
+                verifyNoInteractions(service);
+        }
 }
