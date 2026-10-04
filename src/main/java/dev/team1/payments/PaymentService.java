@@ -2,6 +2,7 @@ package dev.team1.payments;
 
 import java.math.BigDecimal;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class PaymentService {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final PaymentChannelRulesService paymentChannelRules;
 
     // Los valores de Stripe vienen de application.properties (que los lee del fichero .env),
     // así la clave secreta nunca se sube al repositorio.
@@ -45,8 +47,15 @@ public class PaymentService {
     private String cancelUrl;
 
     public PaymentService(OrderRepository orderRepository, OrderService orderService) {
+        this(orderRepository, orderService, new PaymentChannelRulesService());
+    }
+
+    @Autowired
+    public PaymentService(OrderRepository orderRepository, OrderService orderService,
+            PaymentChannelRulesService paymentChannelRules) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
+        this.paymentChannelRules = paymentChannelRules;
     }
 
     // 1. Crea la página de pago de Stripe para un pedido.
@@ -60,10 +69,17 @@ public class PaymentService {
                         HttpStatus.NOT_FOUND, "Order not found: " + request.orderId()));
 
         // b) Solo se paga con Stripe un pedido a domicilio con "Tarjeta online" que aún no esté pagado.
+        try {
+            paymentChannelRules.validate(order.getChannel(), order.getPaymentMethod());
+        } catch (ResponseStatusException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Stripe checkout requires DOMICILIO with ONLINE_CARD payment");
+        }
         if (order.getChannel() != OrderChannel.DOMICILIO
                 || order.getPaymentMethod() != PaymentMethod.ONLINE_CARD) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Order must use online card payment for delivery");
+                    HttpStatus.BAD_REQUEST, "Stripe checkout requires DOMICILIO with ONLINE_CARD payment");
         }
         if (order.getStatus() != OrderStatus.PLACED) {
             throw new ResponseStatusException(
@@ -139,6 +155,13 @@ public class PaymentService {
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND, "Order not found: " + orderId));
 
+            try {
+                paymentChannelRules.validate(order.getChannel(), order.getPaymentMethod());
+            } catch (ResponseStatusException exception) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Payment session references an order with an invalid channel and payment method");
+            }
             if (order.getChannel() != OrderChannel.DOMICILIO
                     || order.getPaymentMethod() != PaymentMethod.ONLINE_CARD) {
                 throw new ResponseStatusException(

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.jsoup.Jsoup;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import dev.team1.orders.dtos.DeliveryMetricsDTOResponse;
 import dev.team1.orders.dtos.DeliveryConfirmationDTORequest;
 import dev.team1.orders.dtos.KitchenOrderDTOResponse.KitchenOrderItemDTO;
 import dev.team1.orders_products.OrderProductEntity;
+import dev.team1.payments.PaymentChannelRulesService;
 import dev.team1.products.ProductEntity;
 import dev.team1.products.ProductRepository;
 import dev.team1.tables.TableEntity;
@@ -43,10 +45,6 @@ public class OrderService {
     private static final int VAT_RATE = 10;
     private static final int KITCHEN_TARGET_MINUTES = 15;
 
-    private static final Map<OrderChannel, List<PaymentMethod>> ALLOWED_PAYMENT_METHODS = Map.of(
-            OrderChannel.SALA, List.of(PaymentMethod.CASH_ONSITE, PaymentMethod.CARD_ONSITE),
-            OrderChannel.DOMICILIO, List.of(PaymentMethod.ONLINE_CARD, PaymentMethod.CASH_ON_DELIVERY));
-
     private static final Map<PaymentMethod, PaymentStatus> PAYMENT_STATUS = Map.of(
             PaymentMethod.CASH_ONSITE, PaymentStatus.PENDING_CASH,
             PaymentMethod.CARD_ONSITE, PaymentStatus.PENDING_CARD_TERMINAL);
@@ -56,17 +54,30 @@ public class OrderService {
     private final TableRepository tableRepository;
     private final UserRepository userRepository;
         private final IInvoiceService invoiceService;
+    private final PaymentChannelRulesService paymentChannelRules;
 
+    @Autowired
     public OrderService(OrderRepository orderRepository,
             ProductRepository productsRepository,
             TableRepository tableRepository,
                         UserRepository userRepository,
                         IInvoiceService invoiceService) {
+        this(orderRepository, productsRepository, tableRepository, userRepository, invoiceService,
+                new PaymentChannelRulesService());
+    }
+
+    public OrderService(OrderRepository orderRepository,
+            ProductRepository productsRepository,
+            TableRepository tableRepository,
+            UserRepository userRepository,
+            IInvoiceService invoiceService,
+            PaymentChannelRulesService paymentChannelRules) {
         this.orderRepository = orderRepository;
         this.productsRepository = productsRepository;
         this.tableRepository = tableRepository;
         this.userRepository = userRepository;
                 this.invoiceService = invoiceService;
+        this.paymentChannelRules = paymentChannelRules;
     }
 
     @Transactional
@@ -175,7 +186,7 @@ public class OrderService {
     }
 
     public List<PaymentMethod> getAllowedPaymentMethods(OrderChannel channel) {
-        return ALLOWED_PAYMENT_METHODS.get(channel);
+        return paymentChannelRules.getAllowedPaymentMethods(channel);
     }
 
     private void validateChannelDetails(OrderDTORequest request, String deviceIdentifier) {
@@ -194,11 +205,7 @@ public class OrderService {
     }
 
     private void validatePaymentMethod(OrderChannel channel, PaymentMethod paymentMethod) {
-        if (!ALLOWED_PAYMENT_METHODS.get(channel).contains(paymentMethod)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Payment method " + paymentMethod + " is not allowed for channel " + channel);
-        }
+        paymentChannelRules.validate(channel, paymentMethod);
     }
 
     private void validateDeliveryDetails(UserEntity user) {
@@ -282,6 +289,8 @@ public class OrderService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Order not found: " + orderId));
+
+        paymentChannelRules.validate(order.getChannel(), order.getPaymentMethod());
 
         if (order.getStatus() == OrderStatus.PAID) {
                         invoiceService.createForPaidOrder(order);
