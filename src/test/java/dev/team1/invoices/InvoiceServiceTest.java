@@ -64,6 +64,73 @@ public class InvoiceServiceTest {
 	}
 
 	@Test
+	void salesSummary_dayShouldAggregatePaidRevenueByChannel() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
+				eq(OrderStatus.PAID), any(Instant.class), any(Instant.class)))
+				.thenReturn(List.of(
+						paidSale(new BigDecimal("12.35"), today, OrderChannel.SALA),
+						paidSale(new BigDecimal("7.65"), today, OrderChannel.DOMICILIO)));
+
+		var result = invoiceService.salesSummary("dia");
+
+		assertEquals("dia", result.period());
+		assertEquals(today, result.startDate());
+		assertEquals(today, result.endDate());
+		assertEquals(2, result.invoiceCount());
+		assertEquals(new BigDecimal("20.00"), result.totalRevenue());
+		assertEquals(new BigDecimal("12.35"), result.onsiteRevenue());
+		assertEquals(new BigDecimal("7.65"), result.deliveryRevenue());
+		verify(invoiceRepository).findPaidByStatusAndPaidAtRange(
+				eq(OrderStatus.PAID),
+				eq(today.atStartOfDay(BUSINESS_ZONE).toInstant()),
+				eq(today.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant()));
+	}
+
+	@Test
+	void salesSummary_weekShouldCoverMondayThroughSunday() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		LocalDate monday = today.with(java.time.DayOfWeek.MONDAY);
+		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
+			eq(OrderStatus.PAID), any(Instant.class), any(Instant.class)))
+				.thenReturn(List.of(paidSale(new BigDecimal("18.00"), today, OrderChannel.SALA)));
+
+		var result = invoiceService.salesSummary("semana");
+
+		assertEquals("semana", result.period());
+		assertEquals(monday, result.startDate());
+		assertEquals(monday.plusDays(6), result.endDate());
+		assertEquals(new BigDecimal("18.00"), result.totalRevenue());
+		verify(invoiceRepository).findPaidByStatusAndPaidAtRange(
+				eq(OrderStatus.PAID),
+				eq(monday.atStartOfDay(BUSINESS_ZONE).toInstant()),
+				eq(monday.plusDays(7).atStartOfDay(BUSINESS_ZONE).toInstant()));
+	}
+
+	@Test
+	void salesSummary_monthShouldCoverFullMonthAndHandleNoSales() {
+		LocalDate today = LocalDate.now(BUSINESS_ZONE);
+		LocalDate firstDay = today.withDayOfMonth(1);
+		LocalDate lastDay = today.withDayOfMonth(today.lengthOfMonth());
+		when(invoiceRepository.findPaidByStatusAndPaidAtRange(
+			eq(OrderStatus.PAID), any(Instant.class), any(Instant.class))).thenReturn(List.of());
+
+		var result = invoiceService.salesSummary("mes");
+
+		assertEquals("mes", result.period());
+		assertEquals(firstDay, result.startDate());
+		assertEquals(lastDay, result.endDate());
+		assertEquals(0, result.invoiceCount());
+		assertEquals(new BigDecimal("0.00"), result.totalRevenue());
+		assertEquals(new BigDecimal("0.00"), result.onsiteRevenue());
+		assertEquals(new BigDecimal("0.00"), result.deliveryRevenue());
+		verify(invoiceRepository).findPaidByStatusAndPaidAtRange(
+				eq(OrderStatus.PAID),
+				eq(firstDay.atStartOfDay(BUSINESS_ZONE).toInstant()),
+				eq(lastDay.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant()));
+	}
+
+	@Test
 	void createForPaidOrder() {
 		OrderEntity order = new OrderEntity();
 		ReflectionTestUtils.setField(order, "id", 77L);

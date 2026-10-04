@@ -1,6 +1,7 @@
 package dev.team1.invoices;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,6 +40,9 @@ import dev.team1.enums.PaymentMethod;
 import dev.team1.invoices.dtos.InvoiceDTORequest;
 import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
+import dev.team1.invoices.dtos.SalesKpiDTOResponse;
+import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
+import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
 import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.invoices.exceptions.InvoiceException;
@@ -189,6 +193,80 @@ class InvoiceControllerTest {
         .andExpect(jsonPath("$.totalElements").value(1));
 
     verify(invoiceService).findPaid(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void facturation_shouldForwardSearchAndReturnPaidInvoices() throws Exception {
+    PaidInvoiceDTOResponse invoice = new PaidInvoiceDTOResponse(
+        3L,
+        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        "Luis Garcia",
+        2,
+        OrderChannel.DOMICILIO,
+        new BigDecimal("22.00"),
+        OrderStatus.PAID,
+        PaymentMethod.ONLINE_CARD,
+        Instant.parse("2026-10-02T13:00:00Z"));
+    when(invoiceService.findPaid(eq("Luis"), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(invoice)));
+
+    mockMvc.perform(get("/api/v1/facturation").param("search", "Luis"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].customerName").value("Luis Garcia"))
+        .andExpect(jsonPath("$.content[0].amount").value(22.00));
+
+    verify(invoiceService).findPaid(eq("Luis"), any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void salesKpis_shouldReturnDashboardMetrics() throws Exception {
+    when(invoiceService.salesKpis()).thenReturn(new SalesKpiDTOResponse(
+        new SalesKpiDTOResponse.Metric(new BigDecimal("25.00"), BigDecimal.ZERO),
+        new SalesKpiDTOResponse.Metric(new BigDecimal("90.00"), BigDecimal.ZERO),
+        new SalesKpiDTOResponse.Metric(new BigDecimal("250.00"), BigDecimal.ZERO),
+        new SalesKpiDTOResponse.Metric(new BigDecimal("900.00"), BigDecimal.ZERO),
+        List.of(), List.of(), null));
+
+    mockMvc.perform(get("/api/v1/kpi/sales"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.today.amount").value(25.00))
+        .andExpect(jsonPath("$.month.amount").value(90.00));
+
+    verify(invoiceService).salesKpis();
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void salesChannelDistribution_shouldReturnChannelMetrics() throws Exception {
+    when(invoiceService.salesChannelDistribution()).thenReturn(new SalesChannelDistributionDTOResponse(
+        LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 4), new BigDecimal("40.00"),
+        List.of(new SalesKpiDTOResponse.ChannelSales(OrderChannel.SALA,
+            new BigDecimal("40.00"), new BigDecimal("100.00")))));
+
+    mockMvc.perform(get("/api/v1/kpi/sales/channels"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(40.00))
+        .andExpect(jsonPath("$.channels[0].channel").value("SALA"));
+
+    verify(invoiceService).salesChannelDistribution();
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void weeklySales_shouldReturnWeeklyMetrics() throws Exception {
+    when(invoiceService.weeklySales()).thenReturn(new WeeklySalesDTOResponse(
+        LocalDate.of(2026, 9, 28), LocalDate.of(2026, 10, 4), LocalDate.of(2026, 10, 3),
+        List.of(new SalesKpiDTOResponse.DailySales(LocalDate.of(2026, 10, 3),
+            new BigDecimal("10.00"), new BigDecimal("15.00"), new BigDecimal("25.00")))));
+
+    mockMvc.perform(get("/api/v1/kpi/sales/weekly"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.weekStart").value("2026-09-28"))
+        .andExpect(jsonPath("$.days[0].total").value(25.00));
+
+    verify(invoiceService).weeklySales();
   }
 
   @Test
