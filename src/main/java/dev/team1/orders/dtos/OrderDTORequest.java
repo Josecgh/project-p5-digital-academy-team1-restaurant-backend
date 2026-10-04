@@ -16,7 +16,17 @@ public record OrderDTORequest(
                 @Size (max = 500 , message = "Chef note must not exceed 500 characters") 
                 String chefNote,
                 @NotNull OrderChannel channel,
-                @NotNull PaymentMethod paymentMethod) {
+                @NotNull PaymentMethod paymentMethod,
+                String deliveryAddress,
+                Integer tableNumber) {
+
+        // Keep the existing constructor for callers that do not send channel-specific details.
+        public OrderDTORequest(List<@NotNull @Valid OrderItemDTORequest> items,
+                        String chefNote,
+                        OrderChannel channel,
+                        PaymentMethod paymentMethod) {
+                this(items, chefNote, channel, paymentMethod, null, null);
+        }
 
         // one ordered product and its quantity.
         public record OrderItemDTORequest(

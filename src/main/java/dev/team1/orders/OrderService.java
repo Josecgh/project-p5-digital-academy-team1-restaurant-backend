@@ -74,6 +74,7 @@ public class OrderService {
             OrderDTORequest request,
             String deviceIdentifier,
             UUID userId) {
+        validateChannelDetails(request, deviceIdentifier);
         validatePaymentMethod(request.channel(), request.paymentMethod());
         String chefNote = prepareChefNote(request.chefNote());
 
@@ -175,6 +176,21 @@ public class OrderService {
 
     public List<PaymentMethod> getAllowedPaymentMethods(OrderChannel channel) {
         return ALLOWED_PAYMENT_METHODS.get(channel);
+    }
+
+    private void validateChannelDetails(OrderDTORequest request, String deviceIdentifier) {
+        if (request.channel() == OrderChannel.SALA) {
+            if (!isBlank(request.deliveryAddress())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "deliveryAddress is not allowed for onsite orders (SALA)");
+            }
+            return;
+        }
+
+        if (request.tableNumber() != null || !isBlank(deviceIdentifier)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Table details (tableNumber or Device-Identifier) are not allowed for home delivery (DOMICILIO)");
+        }
     }
 
     private void validatePaymentMethod(OrderChannel channel, PaymentMethod paymentMethod) {
