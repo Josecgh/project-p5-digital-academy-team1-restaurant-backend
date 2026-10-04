@@ -96,6 +96,22 @@ Detailed project specifications, architectural decisions, and technical guides c
 * **[API Reference](https://github.com/FactoriaF5-Asturias/project-p5-digital-academy-team1-restaurant-backend/wiki/API-Reference):** Complete documentation of RESTful routes, request payloads, and structured HTTP responses.
 * **[Testing](https://github.com/FactoriaF5-Asturias/project-p5-digital-academy-team1-restaurant-backend/wiki/Testing):** Guidelines for running unit tests, integration tests, and validating endpoint behaviors.
 
+### Test Coverage
+
+Generate the JaCoCo coverage report and verify that the project meets the minimum coverage requirement (70%) by running this command from the repository root:
+
+```bash
+./mvnw clean verify
+```
+
+On Windows, use the Maven wrapper script:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+The build fails if total instruction coverage is below 70%. After a successful build, open `target/site/jacoco/index.html` in a browser to see coverage totals and details by package and class.
+
 
 
 <h2 align="center">👨‍💻 Backend Development Team</h2>
