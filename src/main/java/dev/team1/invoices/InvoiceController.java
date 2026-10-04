@@ -10,6 +10,8 @@ import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
 import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
+import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
+import dev.team1.io.PDFExporter;
 import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
@@ -18,6 +20,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -88,6 +92,24 @@ public class InvoiceController {
   @GetMapping("/kpi/sales/weekly")
   public ResponseEntity<WeeklySalesDTOResponse> weeklySales() {
     return ResponseEntity.ok(invoiceService.weeklySales());
+  }
+
+  @GetMapping(value = "/kpi/sales/report", produces = "application/pdf")
+  public ResponseEntity<byte[]> salesReport(
+      @RequestParam(defaultValue = "day") String period) {
+    SalesSummaryDTOResponse summary = invoiceService.salesSummary(period);
+    byte[] pdf = PDFExporter.export("Sales summary", java.util.List.of(
+        "Period: " + summary.period(),
+        "Dates: " + summary.startDate() + " to " + summary.endDate(),
+        "Paid invoices: " + summary.invoiceCount(),
+        "Total revenue: " + summary.totalRevenue() + " EUR",
+        "On-site revenue: " + summary.onsiteRevenue() + " EUR",
+        "Delivery revenue: " + summary.deliveryRevenue() + " EUR"));
+    String filename = "resumen-ventas-" + summary.endDate() + ".pdf";
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_PDF)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .body(pdf);
   }
   
 }

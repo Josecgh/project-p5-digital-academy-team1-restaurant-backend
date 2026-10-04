@@ -27,6 +27,7 @@ import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
 import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
+import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
 import dev.team1.mappers.InvoiceMapper;
@@ -220,6 +221,32 @@ public class InvoiceService implements IInvoiceService {
     BigDecimal total = channels.stream().map(SalesKpiDTOResponse.ChannelSales::amount)
         .reduce(BigDecimal.ZERO, BigDecimal::add).setScale(2, RoundingMode.HALF_UP);
     return new SalesChannelDistributionDTOResponse(from, today, total, channels);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public SalesSummaryDTOResponse salesSummary(String period) {
+    LocalDate today = LocalDate.now(BUSINESS_ZONE);
+    LocalDate from;
+    LocalDate through;
+    switch (period.toLowerCase()) {
+      case "day" -> { from = today; through = today; }
+      case "week" -> { from = today.with(DayOfWeek.MONDAY); through = from.plusDays(6); }
+      case "month" -> {
+        from = today.withDayOfMonth(1);
+        through = today.withDayOfMonth(today.lengthOfMonth());
+      }
+      default -> throw new InvoiceException("Period must be day, week or month.");
+    }
+
+    List<InvoiceEntity> invoices = invoiceRepository.findPaidByStatusAndPaidAtRange(
+        OrderStatus.PAID,
+        from.atStartOfDay(BUSINESS_ZONE).toInstant(),
+        through.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant());
+    BigDecimal onsite = sum(invoices, from, through.plusDays(1), OrderChannel.SALA);
+    BigDecimal delivery = sum(invoices, from, through.plusDays(1), OrderChannel.DOMICILIO);
+    return new SalesSummaryDTOResponse(period.toLowerCase(), from, through, invoices.size(),
+        onsite.add(delivery).setScale(2, RoundingMode.HALF_UP), onsite, delivery);
   }
 
   private SalesKpiDTOResponse.Metric metric(List<InvoiceEntity> invoices,
