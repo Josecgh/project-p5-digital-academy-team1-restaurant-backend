@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import java.io.IOException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -94,17 +95,11 @@ public class InvoiceController {
     return ResponseEntity.ok(invoiceService.weeklySales());
   }
 
-  @GetMapping(value = "/kpi/sales/report", produces = "application/pdf")
+  @GetMapping(value = {"/reportes/ventas.pdf", "/kpi/sales/report"}, produces = "application/pdf")
   public ResponseEntity<byte[]> salesReport(
-      @RequestParam(defaultValue = "day") String period) {
+      @RequestParam(name = "periodo", defaultValue = "dia") String period) throws IOException {
     SalesSummaryDTOResponse summary = invoiceService.salesSummary(period);
-    byte[] pdf = PDFExporter.export("Sales summary", java.util.List.of(
-        "Period: " + summary.period(),
-        "Dates: " + summary.startDate() + " to " + summary.endDate(),
-        "Paid invoices: " + summary.invoiceCount(),
-        "Total revenue: " + summary.totalRevenue() + " EUR",
-        "On-site revenue: " + summary.onsiteRevenue() + " EUR",
-        "Delivery revenue: " + summary.deliveryRevenue() + " EUR"));
+    byte[] pdf = PDFExporter.exportSalesSummary(summary);
     String filename = "resumen-ventas-" + summary.endDate() + ".pdf";
     return ResponseEntity.ok()
         .contentType(MediaType.APPLICATION_PDF)

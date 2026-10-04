@@ -229,14 +229,20 @@ public class InvoiceService implements IInvoiceService {
     LocalDate today = LocalDate.now(BUSINESS_ZONE);
     LocalDate from;
     LocalDate through;
-    switch (period.toLowerCase()) {
-      case "day" -> { from = today; through = today; }
-      case "week" -> { from = today.with(DayOfWeek.MONDAY); through = from.plusDays(6); }
-      case "month" -> {
+    String normalizedPeriod = switch (period.toLowerCase()) {
+      case "day", "dia" -> "dia";
+      case "week", "semana" -> "semana";
+      case "month", "mes" -> "mes";
+      default -> throw new InvoiceException("Periodo debe ser dia, semana o mes.");
+    };
+    switch (normalizedPeriod) {
+      case "dia" -> { from = today; through = today; }
+      case "semana" -> { from = today.with(DayOfWeek.MONDAY); through = from.plusDays(6); }
+      case "mes" -> {
         from = today.withDayOfMonth(1);
         through = today.withDayOfMonth(today.lengthOfMonth());
       }
-      default -> throw new InvoiceException("Period must be day, week or month.");
+      default -> throw new IllegalStateException("Unexpected normalized sales period.");
     }
 
     List<InvoiceEntity> invoices = invoiceRepository.findPaidByStatusAndPaidAtRange(
@@ -245,7 +251,7 @@ public class InvoiceService implements IInvoiceService {
         through.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant());
     BigDecimal onsite = sum(invoices, from, through.plusDays(1), OrderChannel.SALA);
     BigDecimal delivery = sum(invoices, from, through.plusDays(1), OrderChannel.DOMICILIO);
-    return new SalesSummaryDTOResponse(period.toLowerCase(), from, through, invoices.size(),
+    return new SalesSummaryDTOResponse(normalizedPeriod, from, through, invoices.size(),
         onsite.add(delivery).setScale(2, RoundingMode.HALF_UP), onsite, delivery);
   }
 
