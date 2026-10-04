@@ -27,6 +27,7 @@ public class CloudAutomationService {
   private volatile Instant lastSyncAt;
   private volatile Instant lastAttemptAt;
   private volatile String lastError;
+  private volatile String lastResult = "PENDING";
 
   public CloudAutomationService(IInvoiceService invoiceService, SupabaseStorageClient storageClient,
       AdminFailureNotifier adminFailureNotifier,
@@ -57,6 +58,7 @@ public class CloudAutomationService {
           storageClient.upload(path, pdf);
           lastSyncAt = Instant.now();
           lastError = null;
+          lastResult = "SUCCESS";
           logger.info("Resumen diario de ventas {} sincronizado en Supabase Storage", date);
           return;
         } catch (Exception exception) {
@@ -86,6 +88,7 @@ public class CloudAutomationService {
     String reason = failure == null || failure.getMessage() == null
         ? "Error desconocido" : failure.getMessage();
     lastError = "No se pudo " + operation + ": " + reason;
+    lastResult = "FAILED";
     logger.error("Falló el proceso del resumen de ventas {} al {}", date, operation, failure);
     try {
       adminFailureNotifier.notifyFailure(date, operation, reason);
@@ -97,6 +100,7 @@ public class CloudAutomationService {
 
   public CloudAutomationStatus status() {
     return new CloudAutomationStatus(
-        storageClient.isConfigured() && lastError == null, lastSyncAt, lastAttemptAt, lastError);
+        storageClient.isConfigured() && "SUCCESS".equals(lastResult), lastSyncAt,
+        lastAttemptAt, lastResult, lastError);
   }
 }

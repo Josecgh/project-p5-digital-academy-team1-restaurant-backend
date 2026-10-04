@@ -13,7 +13,7 @@ public class CloudAutomationController {
     this.automationService = automationService;
   }
 
-  @GetMapping("/cloud-automation/status")
+  @GetMapping({"/sistema/cron-status", "/cloud-automation/status"})
   public CloudAutomationStatus status() {
     return automationService.status();
   }
