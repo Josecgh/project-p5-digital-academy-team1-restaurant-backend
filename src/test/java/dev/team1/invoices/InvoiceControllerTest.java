@@ -251,6 +251,19 @@ class InvoiceControllerTest {
   }
 
   @Test
+  @WithMockUser(roles = "ADMIN")
+  void salesReport_shouldReturnNotFoundWhenSummaryResourceDoesNotExist() throws Exception {
+    when(invoiceService.salesSummary("mes"))
+        .thenThrow(new InvoiceExceptionNotFound("Sales summary not found."));
+
+    mockMvc.perform(get("/api/v1/reportes/ventas.pdf").param("periodo", "mes"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().string("Sales summary not found."));
+
+    verify(invoiceService).salesSummary("mes");
+  }
+
+  @Test
   @WithMockUser(roles = "CUSTOMER")
   void salesReport_shouldRejectInsufficientPermissionsOnBothRoutes() throws Exception {
     mockMvc.perform(get("/api/v1/reportes/ventas.pdf"))
