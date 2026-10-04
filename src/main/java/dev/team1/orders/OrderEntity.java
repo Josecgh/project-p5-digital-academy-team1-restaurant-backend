@@ -89,6 +89,9 @@ public class OrderEntity {
     @JoinColumn(name = "user_id", nullable = true)
     private UserEntity user;
 
+    @Column(name = "delivery_address", length = 500)
+    private String deliveryAddress;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
