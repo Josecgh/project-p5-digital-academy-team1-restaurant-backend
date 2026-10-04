@@ -92,12 +92,8 @@ public class OrderService {
         OrderEntity order = new OrderEntity();
         order.setUser(user);
         if (request.channel() == OrderChannel.DOMICILIO) {
-            String deliveryAddress = user.getAddress();
-            if (deliveryAddress == null || deliveryAddress.isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "A delivery address is required for home delivery");
-            }
-            order.setDeliveryAddress(deliveryAddress.strip());
+            validateDeliveryDetails(user);
+            order.setDeliveryAddress(formatDeliveryAddress(user));
         }
 
         List<OrderProductEntity> ops = new ArrayList<>();
@@ -189,6 +185,31 @@ public class OrderService {
         }
     }
 
+    private void validateDeliveryDetails(UserEntity user) {
+        if (isBlank(user.getAddress())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A delivery address is required for home delivery");
+        }
+        if (isBlank(user.getPostalCode())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A postal code is required for home delivery");
+        }
+        if (isBlank(user.getCity())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A city is required for home delivery");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private String formatDeliveryAddress(UserEntity user) {
+        return user.getAddress().strip() + ", "
+                + user.getPostalCode().strip() + " "
+                + user.getCity().strip();
+    }
+
     private TableEntity resolveTable(OrderChannel channel, String deviceIdentifier) {
         if (channel != dev.team1.enums.OrderChannel.SALA) {
             return null;
@@ -199,9 +220,14 @@ public class OrderService {
                     HttpStatus.BAD_REQUEST, "Device identifier is required for onsite orders.");
         }
 
-        return tableRepository.findByDeviceIdentifier(deviceIdentifier.strip())
+        TableEntity table = tableRepository.findByDeviceIdentifier(deviceIdentifier.strip())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "No table found for the given device."));
+        if (table.getTableNumber() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A table number is required for onsite orders.");
+        }
+        return table;
     }
 
     private ProductEntity getAvailableProduct(Long productId) {
