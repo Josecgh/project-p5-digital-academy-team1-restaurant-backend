@@ -10,6 +10,7 @@ import dev.team1.invoices.dtos.SalesKpiDTOResponse;
 import dev.team1.invoices.dtos.SalesChannelDistributionDTOResponse;
 import dev.team1.invoices.dtos.WeeklySalesDTOResponse;
 import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
+import java.time.LocalDate;
 import dev.team1.orders.OrderEntity;
 
 public interface IInvoiceService {
@@ -24,4 +25,5 @@ public interface IInvoiceService {
   SalesChannelDistributionDTOResponse salesChannelDistribution();
   WeeklySalesDTOResponse weeklySales();
   SalesSummaryDTOResponse salesSummary(String period);
+  SalesSummaryDTOResponse salesSummary(LocalDate date);
 }

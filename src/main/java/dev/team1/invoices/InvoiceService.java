@@ -245,13 +245,23 @@ public class InvoiceService implements IInvoiceService {
       default -> throw new IllegalStateException("Unexpected normalized sales period.");
     }
 
+    return salesSummary(normalizedPeriod, from, through);
+  }
+
+  @Transactional(readOnly = true)
+  @Override
+  public SalesSummaryDTOResponse salesSummary(LocalDate date) {
+    return salesSummary("dia", date, date);
+  }
+
+  private SalesSummaryDTOResponse salesSummary(String period, LocalDate from, LocalDate through) {
     List<InvoiceEntity> invoices = invoiceRepository.findPaidByStatusAndPaidAtRange(
         OrderStatus.PAID,
         from.atStartOfDay(BUSINESS_ZONE).toInstant(),
         through.plusDays(1).atStartOfDay(BUSINESS_ZONE).toInstant());
     BigDecimal onsite = sum(invoices, from, through.plusDays(1), OrderChannel.SALA);
     BigDecimal delivery = sum(invoices, from, through.plusDays(1), OrderChannel.DOMICILIO);
-    return new SalesSummaryDTOResponse(normalizedPeriod, from, through, invoices.size(),
+    return new SalesSummaryDTOResponse(period, from, through, invoices.size(),
         onsite.add(delivery).setScale(2, RoundingMode.HALF_UP), onsite, delivery);
   }
 

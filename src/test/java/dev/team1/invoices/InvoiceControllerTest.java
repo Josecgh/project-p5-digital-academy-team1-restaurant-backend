@@ -349,6 +349,6 @@ class InvoiceControllerTest {
     mockMvc.perform(get("/api/v1/kpi/sales/report"))
         .andExpect(status().isForbidden());
 
-    verify(invoiceService, never()).salesSummary(any());
+    verify(invoiceService, never()).salesSummary(any(String.class));
   }
 }
