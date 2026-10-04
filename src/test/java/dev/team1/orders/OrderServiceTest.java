@@ -25,7 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -43,6 +42,7 @@ import dev.team1.orders_products.OrderProductEntity;
 import dev.team1.orders.dtos.KitchenMetricsDTOResponse;
 import dev.team1.orders.dtos.DeliveryMetricsDTOResponse;
 import dev.team1.orders.dtos.DeliveryConfirmationDTORequest;
+import dev.team1.payments.PaymentChannelRulesService;
 import dev.team1.products.ProductEntity;
 import dev.team1.products.ProductRepository;
 import dev.team1.tables.TableEntity;
@@ -69,14 +69,23 @@ class OrderServiceTest {
         @Mock
         private IInvoiceService invoiceService;
 
-    @InjectMocks
     private OrderService service;
 
     @BeforeEach
     void setUpUser() {
+        service = new OrderService(
+                orderRepository,
+                productRepository,
+                tableRepository,
+                userRepository,
+                invoiceService,
+                new PaymentChannelRulesService());
+
         UserEntity user = new UserEntity();
         user.setId(REGISTERED_USER_ID);
         user.setAddress("Registered delivery address");
+        user.setPostalCode("28013");
+        user.setCity("Madrid");
         lenient().when(userRepository.findById(REGISTERED_USER_ID)).thenReturn(Optional.of(user));
     }
 
@@ -221,6 +230,8 @@ class OrderServiceTest {
         UserEntity user = new UserEntity();
         user.setId(userId);
         user.setAddress("42 Example Street");
+        user.setPostalCode("28013");
+        user.setCity("Madrid");
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(productRepository.findById(2L)).thenReturn(Optional.of(product(null)));
         when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
@@ -233,7 +244,85 @@ class OrderServiceTest {
         ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
         verify(orderRepository).save(captor.capture());
         assertSame(user, captor.getValue().getUser());
-        assertEquals("42 Example Street", captor.getValue().getDeliveryAddress());
+        assertEquals("42 Example Street, 28013 Madrid", captor.getValue().getDeliveryAddress());
+    }
+
+    @Test
+    void createOnsiteOrderUsesDetectedTableAndRejectsDeliveryAddress() {
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.SALA, PaymentMethod.CARD_ONSITE,
+                "Calle Mayor 10, Madrid", null);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, "tablet-12", null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
+    void createDeliveryOrderStoresExplicitCompleteAddress() {
+        String address = "Calle Mayor 10, 28013 Madrid";
+        when(productRepository.findById(2L)).thenReturn(Optional.of(product(null)));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                "  " + address + "  ", null);
+
+        service.createOrder(request, null, REGISTERED_USER_ID);
+
+        ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
+        verify(orderRepository).save(captor.capture());
+        assertEquals(address, captor.getValue().getDeliveryAddress());
+        assertNull(captor.getValue().getTable());
+    }
+
+    @Test
+    void createDeliveryOrderRejectsTableNumber() {
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                "Calle Mayor 10, Madrid", 12);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, null, REGISTERED_USER_ID));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
+    void createDeliveryOrderRejectsOnsiteDeviceIdentifier() {
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                "Calle Mayor 10, Madrid", null);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, "tablet-12", REGISTERED_USER_ID));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
+    void createDeliveryOrderRequiresCompleteProfileAddressWhenNoAddressIsProvided() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setAddress("Calle Mayor 10");
+        user.setPostalCode("28013");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, null, userId));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(orderRepository, never()).save(any(OrderEntity.class));
     }
 
     @Test
@@ -308,7 +397,7 @@ class OrderServiceTest {
                 () -> service.createOrder(request, "tablet-12", REGISTERED_USER_ID));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
     }
 
     @Test
@@ -322,7 +411,7 @@ class OrderServiceTest {
                 () -> service.createOrder(request, null, REGISTERED_USER_ID));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
     }
 
     @Test
@@ -334,7 +423,7 @@ class OrderServiceTest {
                         "Calle Mayor 5, 28013 Madrid", null), "tablet-12", REGISTERED_USER_ID));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+        verifyNoInteractions(productRepository, tableRepository, orderRepository);
     }
 
     @Test
@@ -398,6 +487,8 @@ class OrderServiceTest {
     void markAsPaidRejectsDeliveredOrderWithoutSaving() {
         OrderEntity order = new OrderEntity();
         order.setStatus(OrderStatus.DELIVERED);
+        order.setChannel(OrderChannel.SALA);
+        order.setPaymentMethod(PaymentMethod.CARD_ONSITE);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,

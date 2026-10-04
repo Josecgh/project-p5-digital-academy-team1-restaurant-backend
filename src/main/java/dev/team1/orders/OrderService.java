@@ -85,7 +85,6 @@ public class OrderService {
             OrderDTORequest request,
             String deviceIdentifier,
             UUID userId) {
-        validateChannelDetails(request, deviceIdentifier);
         validatePaymentMethod(request.channel(), request.paymentMethod());
         String chefNote = prepareChefNote(request.chefNote());
 
@@ -100,6 +99,7 @@ public class OrderService {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "An account is required for home delivery");
         }
+        validateChannelDetails(request, deviceIdentifier);
 
         OrderEntity order = new OrderEntity();
         order.setUser(user);
