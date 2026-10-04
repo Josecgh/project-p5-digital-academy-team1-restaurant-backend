@@ -74,6 +74,21 @@ class SecurityIntegrationTest {
             .andExpect(status().isOk());
     }
 
+    @Test
+    void cloudAutomationStatus_withUserRole_returns403() throws Exception {
+        String token = jwtService.generateAuthToken(regularUser.getEmail(), "ROLE_CUSTOMER").token();
+
+        mockMvc.perform(get(apiEndpoint + "/cloud-automation/status")
+                .cookie(new Cookie("access_token", token)))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cloudAutomationStatus_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get(apiEndpoint + "/cloud-automation/status"))
+            .andExpect(status().isUnauthorized());
+    }
+
     private RoleEntity newRole(String name) {
         RoleEntity role = new RoleEntity();
         role.setName(name);

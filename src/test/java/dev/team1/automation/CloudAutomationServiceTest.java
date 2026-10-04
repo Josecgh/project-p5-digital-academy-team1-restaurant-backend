@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,7 +41,7 @@ class CloudAutomationServiceTest {
   void setUp() {
     automationService = new CloudAutomationService(
         invoiceService, storageClient, adminFailureNotifier, 3, 0, "Europe/Madrid");
-    when(invoiceService.salesSummary(REPORT_DATE)).thenReturn(summary(REPORT_DATE));
+    lenient().when(invoiceService.salesSummary(REPORT_DATE)).thenReturn(summary(REPORT_DATE));
   }
 
   @Test
@@ -104,6 +106,33 @@ class CloudAutomationServiceTest {
     verify(adminFailureNotifier).notifyFailure(
         REPORT_DATE, "obtener el resumen de ventas", "database down");
     assertEquals("FAILED", automationService.status().lastResult());
+  }
+
+  @Test
+  void generateDailyReport_withNullDateFailsAndNotifiesAdmin() throws Exception {
+    automationService.generateDailyReport(null);
+
+    assertEquals("FAILED", automationService.status().lastResult());
+    assertNotNull(automationService.status().lastAttemptAt());
+    verify(storageClient, never()).upload(anyString(), any(byte[].class));
+    verify(adminFailureNotifier).notifyFailure(
+        isNull(), org.mockito.ArgumentMatchers.eq("obtener el resumen de ventas"), anyString());
+  }
+
+  @Test
+  void generateDailyReport_keepsFailureStatusWhenNotificationAlsoFails() throws Exception {
+    doAnswer(invocation -> {
+      throw new IllegalStateException("storage unavailable");
+    }).when(storageClient).upload(anyString(), any(byte[].class));
+    doAnswer(invocation -> {
+      throw new IllegalStateException("webhook unavailable");
+    }).when(adminFailureNotifier).notifyFailure(any(), anyString(), anyString());
+
+    automationService.generateDailyReport(REPORT_DATE);
+
+    assertEquals("FAILED", automationService.status().lastResult());
+    assertEquals("No se pudo subir el PDF tras 3 intentos: storage unavailable",
+        automationService.status().lastError());
   }
 
   private SalesSummaryDTOResponse summary(LocalDate date) {
