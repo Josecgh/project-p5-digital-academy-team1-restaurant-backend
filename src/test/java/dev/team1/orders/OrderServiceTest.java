@@ -248,6 +248,64 @@ class OrderServiceTest {
     }
 
     @Test
+    void deliveryOrderAcceptsCompleteAddressFromRequest() {
+        when(productRepository.findById(2L)).thenReturn(Optional.of(product(null)));
+        when(orderRepository.save(any(OrderEntity.class))).thenAnswer(call -> call.getArgument(0));
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                "  Calle Mayor 5, 28013 Madrid  ", null);
+
+        OrderDTOResponse response = service.createOrder(request, null, REGISTERED_USER_ID);
+
+        assertEquals(OrderChannel.DOMICILIO, response.channel());
+        ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
+        verify(orderRepository).save(captor.capture());
+        assertEquals("Calle Mayor 5, 28013 Madrid", captor.getValue().getDeliveryAddress());
+        assertNull(captor.getValue().getTable());
+    }
+
+    @Test
+    void onsiteOrderRejectsDeliveryAddressAsIncoherentChannelDetail() {
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.SALA, PaymentMethod.CARD_ONSITE,
+                "Calle Mayor 5, 28013 Madrid", null);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, "tablet-12", REGISTERED_USER_ID));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
+    void deliveryOrderRejectsTableNumberAsIncoherentChannelDetail() {
+        OrderDTORequest request = new OrderDTORequest(
+                List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                "Calle Mayor 5, 28013 Madrid", 12);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(request, null, REGISTERED_USER_ID));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
+    void deliveryOrderRejectsDeviceIdentifierAsIncoherentChannelDetail() {
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.createOrder(new OrderDTORequest(
+                        List.of(new OrderDTORequest.OrderItemDTORequest(2L, 1)),
+                        null, OrderChannel.DOMICILIO, PaymentMethod.ONLINE_CARD,
+                        "Calle Mayor 5, 28013 Madrid", null), "tablet-12", REGISTERED_USER_ID));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(userRepository, productRepository, tableRepository, orderRepository);
+    }
+
+    @Test
     void onsiteOrderAllowsGuest() {
         when(productRepository.findById(2L)).thenReturn(Optional.of(product(null)));
         when(tableRepository.findByDeviceIdentifier("tablet-12")).thenReturn(Optional.of(table(12)));
