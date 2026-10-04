@@ -104,8 +104,14 @@ public class OrderService {
         OrderEntity order = new OrderEntity();
         order.setUser(user);
         if (request.channel() == OrderChannel.DOMICILIO) {
-            validateDeliveryDetails(user);
-            order.setDeliveryAddress(formatDeliveryAddress(user));
+            String deliveryAddress = request.deliveryAddress();
+            if (isBlank(deliveryAddress)) {
+                validateDeliveryDetails(user);
+                deliveryAddress = formatDeliveryAddress(user);
+            } else {
+                deliveryAddress = deliveryAddress.strip();
+            }
+            order.setDeliveryAddress(deliveryAddress);
         }
 
         List<OrderProductEntity> ops = new ArrayList<>();

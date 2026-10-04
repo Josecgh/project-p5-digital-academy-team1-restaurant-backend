@@ -17,6 +17,7 @@ public record OrderDTORequest(
                 String chefNote,
                 @NotNull OrderChannel channel,
                 @NotNull PaymentMethod paymentMethod,
+                @Size(max = 500, message = "Delivery address must not exceed 500 characters")
                 String deliveryAddress,
                 Integer tableNumber) {
 
