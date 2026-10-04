@@ -135,6 +135,22 @@ class CloudAutomationServiceTest {
         automationService.status().lastError());
   }
 
+  @Test
+  void generateDailyReport_withZeroRetryConfigurationStillAttemptsOnce() throws Exception {
+    CloudAutomationService serviceWithInvalidRetryCount = new CloudAutomationService(
+        invoiceService, storageClient, adminFailureNotifier, 0, 0, "Europe/Madrid");
+    doAnswer(invocation -> {
+      throw new IllegalStateException("storage unavailable");
+    }).when(storageClient).upload(anyString(), any(byte[].class));
+
+    serviceWithInvalidRetryCount.generateDailyReport(REPORT_DATE);
+
+    verify(storageClient).upload(anyString(), any(byte[].class));
+    verify(adminFailureNotifier).notifyFailure(
+        REPORT_DATE, "subir el PDF tras 1 intentos", "storage unavailable");
+    assertEquals("FAILED", serviceWithInvalidRetryCount.status().lastResult());
+  }
+
   private SalesSummaryDTOResponse summary(LocalDate date) {
     return new SalesSummaryDTOResponse(
         "dia", date, date, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
