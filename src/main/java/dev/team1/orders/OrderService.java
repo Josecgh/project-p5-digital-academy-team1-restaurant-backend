@@ -77,14 +77,27 @@ public class OrderService {
         validatePaymentMethod(request.channel(), request.paymentMethod());
         String chefNote = prepareChefNote(request.chefNote());
 
-        OrderEntity order = new OrderEntity();
-        // GS-341: enlazamos el pedido con el usuario autenticado (los invitados no tienen usuario).
+        UserEntity user = null;
         if (userId != null) {
-            UserEntity user = userRepository.findById(userId)
+            user = userRepository.findById(userId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.UNAUTHORIZED,
                             "Authenticated user no longer exists"));
-            order.setUser(user);
+        }
+        if (request.channel() == OrderChannel.ONLINE && user == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "An account is required for home delivery");
+        }
+
+        OrderEntity order = new OrderEntity();
+        order.setUser(user);
+        if (request.channel() == OrderChannel.ONLINE) {
+            String deliveryAddress = user.getAddress();
+            if (deliveryAddress == null || deliveryAddress.isBlank()) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "A delivery address is required for home delivery");
+            }
+            order.setDeliveryAddress(deliveryAddress.strip());
         }
 
         List<OrderProductEntity> ops = new ArrayList<>();

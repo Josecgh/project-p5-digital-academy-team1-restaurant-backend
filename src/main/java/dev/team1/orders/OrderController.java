@@ -41,12 +41,7 @@ public class OrderController {
             @RequestHeader(value = "Device-Identifier", required = false) String deviceIdentifier,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        // GS-341: si el cliente está autenticado guardamos su id; un invitado queda como null.
-        UUID userId = null;
-
-        if (currentUser != null) {
-            userId = currentUser.user().getId();
-        }
+        UUID userId = currentUser == null ? null : currentUser.user().getId();
 
         OrderDTOResponse response = orderService.createOrder(request, deviceIdentifier, userId);
 
