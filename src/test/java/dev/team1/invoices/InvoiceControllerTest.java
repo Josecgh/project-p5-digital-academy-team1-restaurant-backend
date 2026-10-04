@@ -41,6 +41,7 @@ import dev.team1.invoices.dtos.InvoiceDTOResponse;
 import dev.team1.invoices.dtos.PaidInvoiceDTOResponse;
 import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
 import dev.team1.invoices.exceptions.InvoiceExceptionNotFound;
+import dev.team1.invoices.exceptions.InvoiceException;
 import dev.team1.security.JwtFilter;
 import dev.team1.security.SecurityConfiguration;
 import jakarta.servlet.FilterChain;
@@ -234,5 +235,29 @@ class InvoiceControllerTest {
 
       verify(invoiceService).salesSummary(period);
     }
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void salesReport_shouldRejectUnsupportedPeriod() throws Exception {
+    when(invoiceService.salesSummary("year"))
+        .thenThrow(new InvoiceException("Periodo debe ser dia, semana o mes."));
+
+    mockMvc.perform(get("/api/v1/reportes/ventas.pdf").param("periodo", "year"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().string("Periodo debe ser dia, semana o mes."));
+
+    verify(invoiceService).salesSummary("year");
+  }
+
+  @Test
+  @WithMockUser(roles = "CUSTOMER")
+  void salesReport_shouldRejectInsufficientPermissionsOnBothRoutes() throws Exception {
+    mockMvc.perform(get("/api/v1/reportes/ventas.pdf"))
+        .andExpect(status().isForbidden());
+    mockMvc.perform(get("/api/v1/kpi/sales/report"))
+        .andExpect(status().isForbidden());
+
+    verify(invoiceService, never()).salesSummary(any());
   }
 }

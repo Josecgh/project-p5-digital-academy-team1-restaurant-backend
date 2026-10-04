@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -52,6 +53,15 @@ public class InvoiceServiceTest {
 
 	@InjectMocks
 	private InvoiceService invoiceService;
+
+	@Test
+	void salesSummary_shouldRejectUnsupportedPeriodBeforeQueryingInvoices() {
+		InvoiceException exception = assertThrows(InvoiceException.class,
+				() -> invoiceService.salesSummary("year"));
+
+		assertEquals("Periodo debe ser dia, semana o mes.", exception.getMessage());
+		verifyNoInteractions(invoiceRepository);
+	}
 
 	@Test
 	void createForPaidOrder() {

@@ -15,6 +15,25 @@ import dev.team1.invoices.dtos.SalesSummaryDTOResponse;
 class PDFExporterTest {
 
   @Test
+  void exportSalesSummary_shouldHandlePeriodWithNoSales() throws Exception {
+    SalesSummaryDTOResponse summary = new SalesSummaryDTOResponse(
+        "dia",
+        LocalDate.of(2026, 10, 4),
+        LocalDate.of(2026, 10, 4),
+        0,
+        BigDecimal.ZERO.setScale(2),
+        BigDecimal.ZERO.setScale(2),
+        BigDecimal.ZERO.setScale(2));
+
+    byte[] pdf = PDFExporter.exportSalesSummary(summary);
+    try (var document = Loader.loadPDF(pdf)) {
+      String text = new PDFTextStripper().getText(document);
+      assertTrue(text.contains("0,00 EUR"));
+      assertTrue(text.contains("0,00 %"));
+    }
+  }
+
+  @Test
   void exportSalesSummary_shouldGenerateReadablePdfForDayWeekAndMonth() throws Exception {
     Map<String, String> periods = Map.of(
         "dia", "DIA",
