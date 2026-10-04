@@ -59,8 +59,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
 
-        // GS-341: en pedidos y pagos online la autenticación es opcional.
-        // Sin token se continúa como invitado; con token válido se identifica al usuario.
+        // Order creation and payment flows support guests; online delivery is validated by the service.
         boolean allowsOptionalAuthentication = HttpMethod.POST.name().equals(method)
                 && (uri.equals("/api/v1/orders")
                         || uri.equals("/api/v1/payments/checkout")
